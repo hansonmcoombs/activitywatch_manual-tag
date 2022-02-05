@@ -21,7 +21,7 @@ def create_manual_bucket():
         t = aw.create_bucket(bucket_id=manual_bucket_id, event_type='manual')
 
 
-def delete_manual_data(eid, force=False):
+def delete_manual_data(eid:int, force=False):
     """
 
     :param eid: event id
