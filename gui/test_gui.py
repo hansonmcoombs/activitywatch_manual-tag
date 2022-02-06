@@ -5,7 +5,7 @@ on: 6/02/22
 import datetime
 
 import pandas as pd
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 import numpy as np
 from matplotlib.cm import get_cmap
 from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix
@@ -135,7 +135,6 @@ d1.addWidget(win)
 # todo button to add tag
 
 button = QtGui.QPushButton()
-
 
 ### table section
 w = pg.TableWidget()
