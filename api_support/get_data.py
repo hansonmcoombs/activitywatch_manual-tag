@@ -32,7 +32,7 @@ def delete_manual_data(eid: int, force=False):
     assert t.status_code == 200, t.text
 
 
-def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap='warn'):  # todo check
+def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap='overwrite'):  # todo check all types
     """
 
     :param start: datetime object will be changed to utc.
@@ -42,16 +42,14 @@ def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap
                                          deleted and replace with new events where the passed (new) event is kept
                                          completely and the overlapped events (old) are truncated to prevent any overlap
                                          in the database
-                            "warn_overwrite": default, same as "overwrite", but warns user
                             "underwrite": if the new event overlaps with previous events it will be truncated to prevent
                                           any overlapping data. the previous events will not be impacted.
-                            "warn_underwrite":  same as "underwrite", but warns user
                             "raise": raises an exception to prevent saving overlapping data.
     :return:
     """
     start = start.astimezone(datetime.timezone.utc)
     stop = start + datetime.timedelta(seconds=duration)
-    assert overlap in ["overwrite", "warn_overwrite", "underwrite", "warn_underwrite", "raise"]
+    assert overlap in ["overwrite", "underwrite", "raise"]
     events = []
     delete_events = []
     manual_data = get_manual(fromdatetime=(start - datetime.timedelta(hours=24)).isoformat(),
@@ -250,7 +248,7 @@ def get_window_watcher_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
     df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
-    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min']/60
+    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min'] / 60
 
     return df
 
@@ -288,6 +286,8 @@ def get_labels_from_unix(unix, afk_data, ww_data, manual):
 
     return tag, tag_dur, afk, afk_dur, cur_app, window, ww_dur
 
+
+create_manual_bucket()
 
 if __name__ == '__main__':
     # delete_manual_data(342)
