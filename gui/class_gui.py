@@ -258,3 +258,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # todo write up a quick readme
+    # todo make a conda env file
