@@ -13,7 +13,7 @@ from api_support.get_data import get_afk_data, get_window_watcher_data, get_manu
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
 
-# todo manage time, it seems like there are some TZ issues
+
 class AwQtManual(QtGui.QMainWindow):
     data_mapper = {
         'sum by: afk': 'afk_data',
@@ -28,6 +28,7 @@ class AwQtManual(QtGui.QMainWindow):
 
     def __init__(self, start_day: str):
         QtWidgets.QMainWindow.__init__(self)
+        self.bar_plots = []  # to keep track of the barplots that need to be removed
         self.resize(1500, 900)
         area = DockArea()
         self.setCentralWidget(area)
@@ -51,6 +52,9 @@ class AwQtManual(QtGui.QMainWindow):
 
         self.initialize_datatable()
         self.initialize_button_section()
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_plot_data)
+        self.timer.start(500)
 
         self.show()
 
@@ -85,13 +89,17 @@ class AwQtManual(QtGui.QMainWindow):
         self.date_edit.dateChanged.connect(self.change_date)
         self.dock2.addWidget(self.date_edit)
 
+        self.refresh_button = QtGui.QPushButton('Refresh Plot data')
+        self.refresh_button.clicked.connect(self.update_plot_data)
+        self.dock2.addWidget(self.refresh_button)
+
         self.data_selector = QtGui.QComboBox()
         self.data_selector.addItem('sum by: afk')  # afk_data
         self.data_selector.addItem('sum by: app')  # ww_data
         self.data_selector.addItem('sum by: tag')  # manual_data
         self.dock2.addWidget(self.data_selector)
-        self.selectionchange(1)
-        self.data_selector.currentIndexChanged.connect(self.selectionchange)
+        self.update_datatable(1)
+        self.data_selector.currentIndexChanged.connect(self.update_datatable)
 
         # tag text area
         self.tag = QtGui.QLineEdit('Tag:')
@@ -116,24 +124,49 @@ class AwQtManual(QtGui.QMainWindow):
         self.datatable.resize(500, 500)
         self.dock3.addWidget(self.datatable)
 
-    def tag_time(self):  # todo check!!!!!
+    def tag_time(self):
         low, high = self.selection.getRegion()
-        print(high - low)
-        add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc), # todo manage timezones in the future
+        add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
                         duration=high - low, tag=self.tag.text().replace('Tag:', ''),
                         overlap=self.overlap)
+        self.update_plot_data()
 
-    def change_date(self): # todo pull date again
-        print(self.date_edit.date())
+    def change_date(self):
+        self.day_dt = self.date_edit.date().toPyDate()
+        self.day = self.day_dt.isoformat()
+        self.day_dt = datetime.datetime.fromisoformat(self.day)
+        self.update_plot_data()
+        self.update_datatable(1)
+
+        # auto update area
+        xs = self.get_databounds()
+        self.data_plot.setXRange(*xs, padding=0)
+
+        # set the selector
+        self.selection.setRegion((self.day_dt.timestamp() + 3600 * 9,
+                                  self.day_dt.timestamp() + 3600 * 10))
+
+    def get_databounds(self):
+        data = []
+        for v in self.data.values():
+            if v is None:
+                continue
+            data.append(v.start_unix.min())
+            data.append(v.stop_unix.max())
+        if len(data) == 0:
+            return self.day_dt.timestamp(), (self.day_dt + datetime.timedelta(days=1)).timestamp()
+        else:
+            return min(data), max(data)
 
     def overlap_sel_change(self, i):
         self.overlap = self.overlap_option.currentText()
 
-    def selectionchange(self, i):
+    def update_datatable(self, i):
         j = self.data_selector.currentText()
         data = self.data[self.data_mapper[j]]
         if data is not None:
-            self.show_data = data.groupby(self.sum_col[j]).sum().to_records()
+            temp = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min', 'duration_hrs']].to_records()
+            self.show_data = temp
         else:
             data = pd.DataFrame(columns=['duration min'])
             data.index.name = self.sum_col[j]
@@ -159,7 +192,15 @@ class AwQtManual(QtGui.QMainWindow):
             text3 = f"<span style='font-size: 12pt'> Window: {window}"
             self.plot_label3.setText(text3)
 
-    def add_windowwatcher(self):  # todo make these updating see basicplotting updating
+    def update_plot_data(self):
+        self.data_plot.enableAutoRange('xy', False)  ## stop auto-scaling after the first data set is plotted
+        for bg in self.bar_plots:
+            self.data_plot.removeItem(bg)
+        self.data['manual_data'] = self.add_manual_data()
+        self.data['afk_data'] = self.add_afk()
+        self.data['ww_data'] = self.add_windowwatcher()
+
+    def add_windowwatcher(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_window_watcher_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
         if data is not None:
@@ -171,11 +212,11 @@ class AwQtManual(QtGui.QMainWindow):
                 idx = data.loc[:, 'app'] == k
                 bg = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=0, y1=1,
                                      brush='b')
+                self.bar_plots.append(bg)
                 self.data_plot.addItem(bg)
-            data = data.loc[:, ['title', 'app', 'duration_min', 'start_unix', 'stop_unix']]
         return data
 
-    def add_afk(self):  # todo make these updating see basicplotting updating
+    def add_afk(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
         if data is not None:
@@ -186,11 +227,12 @@ class AwQtManual(QtGui.QMainWindow):
 
             self.data_plot.addItem(bg1)
             self.data_plot.addItem(bg2)
+            self.bar_plots.append(bg1)
+            self.bar_plots.append(bg2)
 
-            data = data.loc[:, ['status', 'duration_min', 'start_unix', 'stop_unix']]
         return data
 
-    def add_manual_data(self):  # todo make these updating see basicplotting updating
+    def add_manual_data(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
         if data is not None:
@@ -203,13 +245,13 @@ class AwQtManual(QtGui.QMainWindow):
                 bg = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=2, y1=3,
                                      brush='b')
                 self.data_plot.addItem(bg)
-                data = data.loc[:, ['tag', 'duration_min', 'start_unix', 'stop_unix']]
+                self.bar_plots.append(bg)
         return data
 
 
 def main():
     app = pg.mkQApp()
-    loader = AwQtManual('2022-02-06')
+    loader = AwQtManual(datetime.date.today().isoformat())
     proxy = pg.SignalProxy(loader.data_plot.scene().sigMouseMoved, rateLimit=60, slot=loader.mouseMoved)
     pg.exec()
 

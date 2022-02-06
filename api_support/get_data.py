@@ -163,6 +163,7 @@ def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
     df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
+    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min'] / 60
     return df
 
 
@@ -205,6 +206,7 @@ def get_afk_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
     df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
+    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min'] / 60
     return df
 
 
@@ -248,6 +250,7 @@ def get_window_watcher_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
     df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
+    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min']/60
 
     return df
 
@@ -273,7 +276,7 @@ def get_labels_from_unix(unix, afk_data, ww_data, manual):
         else:
             idx = (unix <= manual.stop_unix) & (unix >= manual.start_unix)
             if idx.sum() > 0:
-                tag, tag_dur = manual.loc[idx, 'tag', 'duration_min'].iloc[0]  # should only be one
+                tag, tag_dur = manual.loc[idx, ['tag', 'duration_min']].iloc[0]  # should only be one
     if ww_data is not None:
         if unix < ww_data.start_unix.min() or unix > ww_data.stop_unix.max():
             pass
