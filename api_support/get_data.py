@@ -21,7 +21,7 @@ def create_manual_bucket():
         t = aw.create_bucket(bucket_id=manual_bucket_id, event_type='manual')
 
 
-def delete_manual_data(eid:int, force=False):
+def delete_manual_data(eid: int, force=False):
     """
 
     :param eid: event id
@@ -102,6 +102,7 @@ def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap
         elif overlap in ["underwrite", "warn_underwrite"]:
             if 'warn' in overlap:
                 warnings.warn('reducing event size to prevent overlapping events')
+
                 # todo break into multiple events if needed, sort overlaps by start time and then iterate through them?
             # todo underwrite
             raise NotImplementedError
@@ -152,9 +153,16 @@ def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     ]
 
     df = pd.json_normalize(events)
+    if df.empty:
+        return None
     df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True)
     df["stop"] = df.loc[:, 'start'] + df.loc[:, 'duration']
     df.set_index("id", inplace=True)
+
+    df.loc[:, 'start_unix'] = [e.timestamp() for e in df.loc[:, 'start']]
+    df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
+
+    df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
     return df
 
 
@@ -187,9 +195,16 @@ def get_afk_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     ]
 
     df = pd.json_normalize(events)
+    if df.empty:
+        return None
     df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True)
     df["stop"] = df.loc[:, 'start'] + df.loc[:, 'duration']
     df.set_index("id", inplace=True)
+
+    df.loc[:, 'start_unix'] = [e.timestamp() for e in df.loc[:, 'start']]
+    df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
+
+    df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
     return df
 
 
@@ -223,13 +238,55 @@ def get_window_watcher_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     ]
 
     df = pd.json_normalize(events)
+    if df.empty:
+        return None
     df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True)
     df["stop"] = df.loc[:, 'start'] + df.loc[:, 'duration']
     df.set_index("id", inplace=True)
+
+    df.loc[:, 'start_unix'] = [e.timestamp() for e in df.loc[:, 'start']]
+    df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
+
+    df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
+
     return df
+
+
+def get_labels_from_unix(unix, afk_data, ww_data, manual):
+    tag = ''
+    tag_dur = ''
+    afk = ''
+    afk_dur = ''
+    cur_app = ''
+    window = ''
+    ww_dur = ''
+    if afk_data is not None:
+        if unix < afk_data.start_unix.min() or unix > afk_data.stop_unix.max():
+            pass
+        else:
+            idx = (unix <= afk_data.stop_unix) & (unix >= afk_data.start_unix)
+            if idx.sum() > 0:
+                afk, afk_dur = afk_data.loc[idx, ['status', 'duration_min']].iloc[0]  # should only be one
+    if manual is not None:
+        if unix < manual.start_unix.min() or unix > manual.stop_unix.max():
+            pass
+        else:
+            idx = (unix <= manual.stop_unix) & (unix >= manual.start_unix)
+            if idx.sum() > 0:
+                tag, tag_dur = manual.loc[idx, 'tag', 'duration_min'].iloc[0]  # should only be one
+    if ww_data is not None:
+        if unix < ww_data.start_unix.min() or unix > ww_data.stop_unix.max():
+            pass
+        else:
+            idx = (unix <= ww_data.stop_unix) & (unix >= ww_data.start_unix)
+            if idx.sum() > 0:
+                window, cur_app, ww_dur = ww_data.loc[idx, [
+                    'title', 'app', 'duration_min']].iloc[0]  # should only be one
+
+    return tag, tag_dur, afk, afk_dur, cur_app, window, ww_dur
 
 
 if __name__ == '__main__':
     # delete_manual_data(342)
-    t = get_afk_data('2022-02-04', '2022-02-06')
+    t = get_window_watcher_data('2022-02-04', '2022-02-06')
     pass
