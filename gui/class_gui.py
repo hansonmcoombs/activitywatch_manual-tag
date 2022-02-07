@@ -3,6 +3,7 @@ created matt_dumont
 on: 6/02/22
 """
 import datetime
+import time
 
 import pandas as pd
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
@@ -142,6 +143,7 @@ class AwQtManual(QtGui.QMainWindow):
                         overlap=self.overlap)
         self.update_plot_data()
         self.update_datatable(1)
+        self.update_legend()
 
     def change_date(self):
         self.day_dt = self.date_edit.date().toPyDate()
@@ -157,8 +159,10 @@ class AwQtManual(QtGui.QMainWindow):
         # set the selector
         self.selection.setRegion((self.day_dt.timestamp() + 3600 * 9,
                                   self.day_dt.timestamp() + 3600 * 10))
+        self.update_legend()
 
     def add_legend(self):
+        self.legend_widgets = []
         self.legend_font = QtGui.QFont()
         self.legend_font.setBold(True)
         for lgroup in ['afk_data', 'manual_data']:
@@ -191,6 +195,14 @@ class AwQtManual(QtGui.QMainWindow):
                 self.dock5.addWidget(leg_lab)
                 self.legend_widgets.append(leg_lab)
 
+    def delete_legend(self):
+        while len(self.legend_widgets)>0:
+            li = self.legend_widgets.pop()
+            li.setParent(None)
+            self.layout().removeWidget(li)
+            li.deleteLater()
+            li = None
+
     def get_databounds(self):
         data = []
         for v in self.data.values():
@@ -206,13 +218,19 @@ class AwQtManual(QtGui.QMainWindow):
     def overlap_sel_change(self, i):
         self.overlap = self.overlap_option.currentText()
 
+    def update_legend(self):
+        self.delete_legend()
+        self.add_legend()
+
     def delete_events(self):
+        self.delete_legend()
         low, high = self.selection.getRegion()
         add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
                         duration=high - low, tag=self.tag.text().replace('Tag:', ''),
                         overlap='delete')
         self.update_plot_data()
         self.update_datatable(1)
+        self.update_legend()
 
     def update_datatable(self, i):
         j = self.data_selector.currentText()
@@ -315,7 +333,6 @@ class AwQtManual(QtGui.QMainWindow):
         return data
 
 
-# todo add color legends!
 def main():
     app = pg.mkQApp()
     loader = AwQtManual(datetime.date.today().isoformat())
