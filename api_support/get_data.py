@@ -237,8 +237,9 @@ def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'start_unix'] = [e.timestamp() for e in df.loc[:, 'start']]
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
-    df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
-    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min'] / 60
+    temp = (df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60
+    df.loc[:, 'duration_min'] = temp
+
     return df
 
 
@@ -280,8 +281,8 @@ def get_afk_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'start_unix'] = [e.timestamp() for e in df.loc[:, 'start']]
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
-    df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
-    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min'] / 60
+    temp = (df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60
+    df.loc[:, 'duration_min'] = temp
     return df
 
 
@@ -324,20 +325,20 @@ def get_window_watcher_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'start_unix'] = [e.timestamp() for e in df.loc[:, 'start']]
     df.loc[:, 'stop_unix'] = [e.timestamp() for e in df.loc[:, 'stop']]
 
-    df.loc[:, 'duration_min'] = ((df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60).round(2)
-    df.loc[:, 'duration_hrs'] = df.loc[:, 'duration_min'] / 60
+    temp = (df.loc[:, 'stop_unix'] - df.loc[:, 'start_unix']) / 60
+    df.loc[:, 'duration_min'] = temp
 
     return df
 
 
 def get_labels_from_unix(unix, afk_data, ww_data, manual):
     tag = ''
-    tag_dur = ''
+    tag_dur = 0
     afk = ''
-    afk_dur = ''
+    afk_dur = 0
     cur_app = ''
     window = ''
-    ww_dur = ''
+    ww_dur = 0
     if afk_data is not None:
         if unix < afk_data.start_unix.min() or unix > afk_data.stop_unix.max():
             pass
@@ -369,5 +370,5 @@ create_manual_bucket()
 if __name__ == '__main__':
     # delete_manual_data(342)
     start = datetime.datetime.today()
-    t = get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+    t = get_window_watcher_data((start + datetime.timedelta(days=-1)).isoformat(), (start + datetime.timedelta(days=1)).isoformat())
     pass

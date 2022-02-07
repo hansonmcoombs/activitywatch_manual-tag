@@ -70,9 +70,9 @@ class AwQtManual(QtGui.QMainWindow):
 
     def inialize_plot_window(self):
         self.plot_window = pg.GraphicsLayoutWidget(show=False)
-        self.plot_label1 = pg.LabelItem(justify='right')
-        self.plot_label2 = pg.LabelItem(justify='right')
-        self.plot_label3 = pg.LabelItem(justify='right')
+        self.plot_label1 = pg.LabelItem(justify='left')
+        self.plot_label2 = pg.LabelItem(justify='left')
+        self.plot_label3 = pg.LabelItem(justify='left')
         self.plot_window.addItem(self.plot_label1)
         self.plot_window.nextRow()
         self.plot_window.addItem(self.plot_label2)
@@ -196,7 +196,7 @@ class AwQtManual(QtGui.QMainWindow):
                 self.legend_widgets.append(leg_lab)
 
     def delete_legend(self):
-        while len(self.legend_widgets)>0:
+        while len(self.legend_widgets) > 0:
             li = self.legend_widgets.pop()
             li.setParent(None)
             self.layout().removeWidget(li)
@@ -236,7 +236,10 @@ class AwQtManual(QtGui.QMainWindow):
         j = self.data_selector.currentText()
         data = self.data[self.data_mapper[j]]
         if data is not None:
-            temp = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min', 'duration_hrs']].to_records()
+
+            df = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
+            df.loc[:, 'duration_format'] = [f'{int(e // 60):02d}:{int(e % 60):02d}' for e in df.duration_min]
+            temp = df.loc[:, ['duration_format']].to_records()
             self.show_data = temp
         else:
             data = pd.DataFrame(columns=['duration min'])
@@ -254,11 +257,14 @@ class AwQtManual(QtGui.QMainWindow):
                 self.data['afk_data'],
                 self.data['ww_data'],
                 self.data['manual_data'])
+            low, high = self.selection.getRegion()
+            selected = (high - low) / 60
             text = (f"<span style='font-size: 12pt'>"
-                    f"{datetime.datetime.fromtimestamp(index).isoformat(sep=' ', timespec='seconds')};"
-                    f"  Tag: {tag}; {tag_dur}m")
+                    f"selection: {int(selected // 60):02d}:{int(selected % 60):02d};"
+                    f"  Tag: {tag}; {int(tag_dur // 60):02d}:{int(tag_dur % 60):02d}")
             self.plot_label1.setText(text)
-            text2 = f"<span style='font-size: 12pt'>AKF:{afk}; {afk_dur}m  app:{cur_app}; {ww_dur}"
+            text2 = (f"<span style='font-size: 12pt'>AKF:{afk}; {int(afk_dur // 60):02d}:{int(afk_dur % 60):02d}  "
+                     f"app:{cur_app}; {int(ww_dur // 60):02d}:{int(ww_dur % 60):02d}")
             self.plot_label2.setText(text2)
             text3 = f"<span style='font-size: 12pt'> Window: {window}"
             self.plot_label3.setText(text3)
@@ -279,7 +285,7 @@ class AwQtManual(QtGui.QMainWindow):
             apps = pd.unique(data.loc[:, 'app'])
             cm = pg.colormap.get('gist_earth', 'matplotlib')
             n_scens = len(apps) + 1
-            colors = [cm[(e+1) / n_scens] for e in range(n_scens)]
+            colors = [cm[(e + 1) / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
                 legend[k] = c
                 idx = data.loc[:, 'app'] == k
@@ -288,9 +294,6 @@ class AwQtManual(QtGui.QMainWindow):
                 self.bar_plots.append(bg)
                 self.data_plot.addItem(bg)
             self.legend['ww_data'] = legend
-            'afk_data'
-
-            'manual_data'
         return data
 
     def add_afk(self):
@@ -322,7 +325,7 @@ class AwQtManual(QtGui.QMainWindow):
             apps = pd.unique(data.loc[:, 'tag'])
             cm = pg.colormap.get('gist_earth', 'matplotlib')
             n_scens = len(apps) + 1
-            colors = [cm[(e+1) / n_scens] for e in range(n_scens)]
+            colors = [cm[(e + 1) / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
                 legend[k] = c
                 idx = data.loc[:, 'tag'] == k
