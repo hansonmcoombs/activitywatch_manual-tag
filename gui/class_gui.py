@@ -89,10 +89,6 @@ class AwQtManual(QtGui.QMainWindow):
         self.date_edit.dateChanged.connect(self.change_date)
         self.dock2.addWidget(self.date_edit)
 
-        self.refresh_button = QtGui.QPushButton('Refresh Plot data')
-        self.refresh_button.clicked.connect(self.update_plot_data)
-        self.dock2.addWidget(self.refresh_button)
-
         self.data_selector = QtGui.QComboBox()
         self.data_selector.addItem('sum by: afk')  # afk_data
         self.data_selector.addItem('sum by: app')  # ww_data
@@ -254,9 +250,3 @@ def main():
     loader = AwQtManual(datetime.date.today().isoformat())
     proxy = pg.SignalProxy(loader.data_plot.scene().sigMouseMoved, rateLimit=60, slot=loader.mouseMoved)
     pg.exec()
-
-
-if __name__ == '__main__':
-    main()
-    # todo write up a quick readme
-    # todo make a conda env file
