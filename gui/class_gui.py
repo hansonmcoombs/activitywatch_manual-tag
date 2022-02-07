@@ -277,9 +277,9 @@ class AwQtManual(QtGui.QMainWindow):
         legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'app'])
-            cm = pg.colormap.get('gist_ncar', 'matplotlib')
-            n_scens = len(apps)
-            colors = [cm[e / n_scens] for e in range(n_scens)]
+            cm = pg.colormap.get('gist_earth', 'matplotlib')
+            n_scens = len(apps) + 1
+            colors = [cm[(e+1) / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
                 legend[k] = c
                 idx = data.loc[:, 'app'] == k
@@ -296,14 +296,16 @@ class AwQtManual(QtGui.QMainWindow):
     def add_afk(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
-        legend = {'not-afk': QtGui.QColor(0, 225, 0), 'afk': QtGui.QColor(255, 0, 0)}
+        r = QtGui.QColor(255, 0, 0)
+        g = QtGui.QColor(0, 225, 0)
+        legend = {'not-afk': g, 'afk': r}
         if data is not None:
             idx = data.status == 'afk'
             bg2 = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=1, y1=2,
-                                  brush=QtGui.QColor(255, 0, 0))
+                                  brush=r)
             idx = data.status != 'afk'
             bg1 = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=1, y1=2,
-                                  brush=QtGui.QColor(0, 255, 0))
+                                  brush=g)
 
             self.data_plot.addItem(bg1)
             self.data_plot.addItem(bg2)
@@ -318,9 +320,9 @@ class AwQtManual(QtGui.QMainWindow):
         legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'tag'])
-            cm = pg.colormap.get('gist_ncar', 'matplotlib')
-            n_scens = len(apps)
-            colors = [cm[e / n_scens] for e in range(n_scens)]
+            cm = pg.colormap.get('gist_earth', 'matplotlib')
+            n_scens = len(apps) + 1
+            colors = [cm[(e+1) / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
                 legend[k] = c
                 idx = data.loc[:, 'tag'] == k
