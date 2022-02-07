@@ -29,15 +29,23 @@ class AwQtManual(QtGui.QMainWindow):
     def __init__(self, start_day: str):
         QtWidgets.QMainWindow.__init__(self)
         self.bar_plots = []  # to keep track of the barplots that need to be removed
-        self.resize(1500, 900)
+        self.resize(1900, 900)
         area = DockArea()
         self.setCentralWidget(area)
-        self.dock1 = Dock("main plot", size=(1000, 900), hideTitle=True)
-        self.dock2 = Dock("tag data", size=(500, 300), hideTitle=True)
-        self.dock3 = Dock('table_data', size=(500, 600), hideTitle=True)
+        self.dock1 = Dock("main plot", size=(1200, 900), hideTitle=True)
+        self.dock2 = Dock("tag data", size=(300, 300), hideTitle=True)
+        self.dock5 = Dock("legend", size=(200, 900), hideTitle=True)
+        self.dock4 = Dock("legend", size=(200, 900), hideTitle=True)
+        self.dock3 = Dock('table_data', size=(300, 600), hideTitle=True)
+        self.legend = {'afk_data': {},
+                       'ww_data': {},
+                       'manual_data': {}}
+        self.legend_widgets = []
 
         area.addDock(self.dock1, 'left')
-        area.addDock(self.dock2, 'right', self.dock1)
+        area.addDock(self.dock4, 'right', self.dock1)
+        area.addDock(self.dock5, 'right', self.dock4)
+        area.addDock(self.dock2, 'right', self.dock5)
         area.addDock(self.dock3, 'bottom', self.dock2)
         self.day = start_day
         self.day_dt = datetime.datetime.fromisoformat(start_day)
@@ -53,6 +61,7 @@ class AwQtManual(QtGui.QMainWindow):
         self.initialize_datatable()
         self.initialize_button_section()
         self.timer = QtCore.QTimer()
+        self.add_legend()
         self.timer.timeout.connect(self.update_plot_data)
         self.timer.start(500)
 
@@ -69,7 +78,9 @@ class AwQtManual(QtGui.QMainWindow):
         self.plot_window.nextRow()
         self.plot_window.addItem(self.plot_label3)
         self.plot_window.nextRow()
-        self.data_plot = self.plot_window.addPlot(axisItems={'bottom': pg.DateAxisItem()})
+        self.plot_yaxis = pg.AxisItem(orientation='left')
+        self.plot_yaxis.setTicks([[(0.5, 'Win-watch'), (1.5, 'Afk'), (2.5, 'Tag')]])
+        self.data_plot = self.plot_window.addPlot(axisItems={'bottom': pg.DateAxisItem(), 'left': self.plot_yaxis})
         self.data_plot.setYRange(0, 3)
         self.data_plot.setMouseEnabled(x=True, y=False)
         self.data_plot.resize(1000, 600)
@@ -83,6 +94,10 @@ class AwQtManual(QtGui.QMainWindow):
         self.vb = self.data_plot.vb
 
     def initialize_button_section(self):
+        # delete button
+        self.delete_button = QtGui.QPushButton('Delete tags in selected time')
+        self.delete_button.clicked.connect(self.delete_events)
+        self.dock2.addWidget(self.delete_button)
 
         self.date_edit = QtWidgets.QDateEdit(calendarPopup=True)
         self.date_edit.setDateTime(self.day_dt)
@@ -126,6 +141,7 @@ class AwQtManual(QtGui.QMainWindow):
                         duration=high - low, tag=self.tag.text().replace('Tag:', ''),
                         overlap=self.overlap)
         self.update_plot_data()
+        self.update_datatable(1)
 
     def change_date(self):
         self.day_dt = self.date_edit.date().toPyDate()
@@ -142,6 +158,39 @@ class AwQtManual(QtGui.QMainWindow):
         self.selection.setRegion((self.day_dt.timestamp() + 3600 * 9,
                                   self.day_dt.timestamp() + 3600 * 10))
 
+    def add_legend(self):
+        self.legend_font = QtGui.QFont()
+        self.legend_font.setBold(True)
+        for lgroup in ['afk_data', 'manual_data']:
+            litems = self.legend[lgroup]
+            over_label = QtGui.QLabel(lgroup, self)
+            over_label.setFont(self.legend_font)
+            self.dock4.addWidget(over_label)
+            self.legend_widgets.append(over_label)
+            for k, c in litems.items():
+                leg_lab = QtGui.QLabel(k, self)
+                leg_lab.setFont(self.legend_font)
+                use_c = c if isinstance(c, str) else c.name()
+                # setting up background color and border
+                leg_lab.setStyleSheet(f"background-color: {use_c}; border: 1px solid black;")
+                self.dock4.addWidget(leg_lab)
+                self.legend_widgets.append(leg_lab)
+
+        for lgroup in ['ww_data']:
+            litems = self.legend[lgroup]
+            over_label = QtGui.QLabel(lgroup, self)
+            over_label.setFont(self.legend_font)
+            self.dock5.addWidget(over_label)
+            self.legend_widgets.append(over_label)
+            for k, c in litems.items():
+                leg_lab = QtGui.QLabel(k, self)
+                leg_lab.setFont(self.legend_font)
+                use_c = c if isinstance(c, str) else c.name()
+                # setting up background color and border
+                leg_lab.setStyleSheet(f"background-color: {use_c}; border: 1px solid black;")
+                self.dock5.addWidget(leg_lab)
+                self.legend_widgets.append(leg_lab)
+
     def get_databounds(self):
         data = []
         for v in self.data.values():
@@ -156,6 +205,14 @@ class AwQtManual(QtGui.QMainWindow):
 
     def overlap_sel_change(self, i):
         self.overlap = self.overlap_option.currentText()
+
+    def delete_events(self):
+        low, high = self.selection.getRegion()
+        add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
+                        duration=high - low, tag=self.tag.text().replace('Tag:', ''),
+                        overlap='delete')
+        self.update_plot_data()
+        self.update_datatable(1)
 
     def update_datatable(self, i):
         j = self.data_selector.currentText()
@@ -199,52 +256,66 @@ class AwQtManual(QtGui.QMainWindow):
     def add_windowwatcher(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_window_watcher_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+        legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'app'])
-            cm = get_cmap('gist_ncar')
+            cm = pg.colormap.get('gist_ncar', 'matplotlib')
             n_scens = len(apps)
-            colors = [cm(e / n_scens) for e in range(n_scens)]
+            colors = [cm[e / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
+                legend[k] = c
                 idx = data.loc[:, 'app'] == k
                 bg = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=0, y1=1,
-                                     brush='b')
+                                     brush=c)
                 self.bar_plots.append(bg)
                 self.data_plot.addItem(bg)
+            self.legend['ww_data'] = legend
+            'afk_data'
+
+            'manual_data'
         return data
 
     def add_afk(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+        legend = {'not-afk': QtGui.QColor(0, 225, 0), 'afk': QtGui.QColor(255, 0, 0)}
         if data is not None:
             idx = data.status == 'afk'
-            bg2 = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=1, y1=2, brush='r')
+            bg2 = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=1, y1=2,
+                                  brush=QtGui.QColor(255, 0, 0))
             idx = data.status != 'afk'
-            bg1 = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=1, y1=2, brush='g')
+            bg1 = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=1, y1=2,
+                                  brush=QtGui.QColor(0, 255, 0))
 
             self.data_plot.addItem(bg1)
             self.data_plot.addItem(bg2)
             self.bar_plots.append(bg1)
             self.bar_plots.append(bg2)
-
+            self.legend['afk_data'] = legend
         return data
 
     def add_manual_data(self):
         start = datetime.datetime.fromisoformat(self.day)
         data = get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+        legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'tag'])
-            cm = get_cmap('gist_ncar')
+            cm = pg.colormap.get('gist_ncar', 'matplotlib')
             n_scens = len(apps)
-            colors = [cm(e / n_scens) for e in range(n_scens)]
+            colors = [cm[e / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
+                legend[k] = c
                 idx = data.loc[:, 'tag'] == k
                 bg = pg.BarGraphItem(x0=data.loc[idx, 'start_unix'], x1=data.loc[idx, 'stop_unix'], y0=2, y1=3,
-                                     brush='b')
+                                     brush=c)
                 self.data_plot.addItem(bg)
                 self.bar_plots.append(bg)
+            self.legend['manual_data'] = legend
+
         return data
 
 
+# todo add color legends!
 def main():
     app = pg.mkQApp()
     loader = AwQtManual(datetime.date.today().isoformat())
