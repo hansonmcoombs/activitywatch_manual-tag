@@ -1,0 +1,14 @@
+# https://www.freedesktop.org/software/systemd/man/systemd.timer.html
+[Unit]
+Description=add_milestones in KSL system, expected to run every 5 min or so
+Requires=notify_overwork.service
+
+[Timer]
+Unit=notify_overwork.service
+# every 10 min see https://www.freedesktop.org/software/systemd/man/systemd.time.html#
+OnCalendar=*-*-* *:0/10
+# accuracy defaults to 1 min, which could be a bit dodge
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

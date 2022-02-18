@@ -1,0 +1,16 @@
+[Unit]
+Description=notify_overwork, expected to run every 10 min or so
+
+[Service]
+# best overview: https://wiki.archlinux.org/title/systemd#Service_types
+Type=simple
+EnvironmentFile=/home/matt_dumont/aw_qt_notify/notify_overwork.env
+ExecStart=/home/matt_dumont/miniconda3/bin/conda run -n aq_qt python /home/matt_dumont/PycharmProjects/activitywatch_ui/notification/notify_on_amount.py /home/matt_dumont/aw_qt_notify/notify_overwork_params.txt /home/matt_dumont/aw_qt_notify/notify_overwork_run.txt
+ExecStop=
+Restart=on-failure
+RestartSec=60
+User=matt_dumont
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
