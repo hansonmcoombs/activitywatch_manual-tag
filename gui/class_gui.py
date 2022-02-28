@@ -238,6 +238,7 @@ class AwQtManual(QtGui.QMainWindow):
         if data is not None:
 
             df = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
+            df.loc['total'] = data.loc[:, 'duration_min'].sum()
             df.loc[:, 'duration_format'] = [f'{int(e // 60):02d}:{int(e % 60):02d}' for e in df.duration_min]
             temp = df.loc[:, ['duration_format']].to_records()
             self.show_data = temp
