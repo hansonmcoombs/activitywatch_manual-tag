@@ -11,4 +11,4 @@ OnCalendar=*-*-* *:0/10
 AccuracySec=30s
 
 [Install]
-WantedBy=timers.target
+WantedBy=default.target
