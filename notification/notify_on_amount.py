@@ -6,7 +6,9 @@ on: 18/02/22
 import datetime
 import os.path
 import sys
+from plyer import notification
 from api_support.get_data import get_afk_data
+from playsound import playsound
 
 today = datetime.date.today()
 now = datetime.datetime.now()
@@ -23,29 +25,43 @@ def notify_on_amount(param_file, notified_file):
     worked_time = data.loc['not-afk', 'duration_min']  # minutes
     with open(param_file, 'r') as f:
         lines = f.readlines()
-        limit = float(lines[0]) * 60 # expects decimal hours
+        limit = float(lines[0]) * 60  # expects decimal hours
         text_num = lines[1]
         message = lines[2]
-        countdown_start = float(lines[3]) # expects minutes before
+        countdown_start = float(lines[3])  # expects minutes before
 
     if worked_time >= limit:
         if os.path.exists(notified_file):
             with open(notified_file, 'r') as f:
-                already_sent = int(f.readline()) # todo change to datetime of last sent
-            if already_sent == 1:
+                last_sent = datetime.datetime.fromisoformat(f.readline())
+            if last_sent < start_time:
                 pass
             else:
                 send_message(number=text_num, message=message)
                 with open(notified_file, 'w') as f:
-                    f.write('1')
+                    f.write(now.isoformat())
         else:
             send_message(number=text_num, message=message)
             with open(notified_file, 'w') as f:
-                f.write('1')
+                f.write(now.isoformat())
 
-        # todo send desktop notification if computer is still active
-    elif limit-worked_time <= countdown_start:
-        desktop_notification(f'you have {round(limit-worked_time)} minutes to the end of your day')
+        # send desktop notification if computer is still active
+        start = now + datetime.timedelta(minutes=-60)
+        tempdata = get_afk_data(start.isoformat(), now.isoformat())
+        if tempdata is None:
+            pass
+        else:
+            last_active = tempdata.loc[tempdata.status == 'not-afk', 'duration_min'].sum()
+            last_inactive = tempdata.loc[tempdata.status == 'afk', 'duration_min'].sum()
+            if last_active >= 0.15 * (last_inactive + last_active):
+                # 15% of the last hour active... create notificcation
+                desktop_notification(f'OVERWORKED {round(worked_time - limit)} min!!',
+                                     f'You have overworked {round(worked_time - limit)} minutes, STOP NOW')
+
+    elif limit - worked_time <= countdown_start:
+        desktop_notification('ALMOST DONE WITH WORK',
+                             f'you have {round(limit - worked_time)} minutes to the end of your day')
+
 
 def send_message(number, message):
     import requests
@@ -57,9 +73,17 @@ def send_message(number, message):
 
     print(resp.json())
 
-def desktop_notification(text): # todo make this happen
+
+def desktop_notification(title, text):
     # desktop notification + sound
-    raise NotImplementedError
+    notification.notify(
+        # title of the notification,
+        title=title,
+        message=text,
+        app_icon=None,
+        timeout=20
+    )
+    playsound(os.path.join(os.path.dirname(__file__), 'Kea.mp3'))
 
 
 if __name__ == '__main__':
