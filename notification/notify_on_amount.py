@@ -34,7 +34,7 @@ def notify_on_amount(param_file, notified_file):
         if os.path.exists(notified_file):
             with open(notified_file, 'r') as f:
                 last_sent = datetime.datetime.fromisoformat(f.readline())
-            if last_sent < start_time:
+            if last_sent > start_time:
                 pass
             else:
                 send_message(number=text_num, message=message)

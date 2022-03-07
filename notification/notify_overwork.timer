@@ -1,6 +1,6 @@
 # https://www.freedesktop.org/software/systemd/man/systemd.timer.html
 [Unit]
-Description=add_milestones in KSL system, expected to run every 5 min or so
+Description= notify_overwork, expected to run every 10 min or so
 Requires=notify_overwork.service
 
 [Timer]
