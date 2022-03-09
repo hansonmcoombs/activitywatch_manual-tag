@@ -46,10 +46,13 @@ def notify_on_amount(param_file, notified_file):
                 f.write(now.isoformat())
 
         # send desktop notification if computer is still active
-        start = now + datetime.timedelta(minutes=-60)
+        start = now + datetime.timedelta(minutes=-120)
         tempdata = get_afk_data(start.isoformat(), now.isoformat())
         if tempdata is None:
-            pass
+            print('No data guessing by time of day')
+            if now.hour >8 and now.hour<17:
+                desktop_notification(f'OVERWORKED {round(worked_time - limit)} min!!',
+                                     f'You have overworked {round(worked_time - limit)} minutes, STOP NOW')
         else:
             last_active = tempdata.loc[tempdata.status == 'not-afk', 'duration_min'].sum()
             last_inactive = tempdata.loc[tempdata.status == 'afk', 'duration_min'].sum()
@@ -75,6 +78,7 @@ def send_message(number, message):
 
 
 def desktop_notification(title, text):
+    print('notification')
     # desktop notification + sound
     notification.notify(
         # title of the notification,
@@ -85,8 +89,10 @@ def desktop_notification(title, text):
     )
     playsound(os.path.join(os.path.dirname(__file__), 'Kea.mp3'))
 
-
+# todo the play vs not play is based on the environment... need to understand... see /home/matt_dumont/aw_qt_notify/notify_overwork.env
 if __name__ == '__main__':
+    #param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
+    #notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
     param_file = sys.argv[1]
     notified_file = sys.argv[2]
     notify_on_amount(param_file, notified_file)
