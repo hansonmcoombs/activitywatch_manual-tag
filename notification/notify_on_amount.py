@@ -28,7 +28,9 @@ def notify_on_amount(param_file, notified_file):
         limit = float(lines[0]) * 60  # expects decimal hours
         text_num = lines[1]
         message = lines[2]
-        countdown_start = float(lines[3])  # expects minutes before
+        countdown_start = float(lines[3])  # expects minutes before to let you know that you are almost done
+        notifications_start = int(lines[4])  # won't send notification before hour
+        notifications_stop = int(lines[5])  # won't send notification after hour
 
     if worked_time >= limit:
         if os.path.exists(notified_file):
@@ -50,7 +52,7 @@ def notify_on_amount(param_file, notified_file):
         tempdata = get_afk_data(start.isoformat(), now.isoformat())
         if tempdata is None:
             print('No data guessing by time of day')
-            if now.hour >8 and now.hour<17:
+            if now.hour > notifications_start and now.hour < notifications_stop:
                 desktop_notification(f'OVERWORKED {round(worked_time - limit)} min!!',
                                      f'You have overworked {round(worked_time - limit)} minutes, STOP NOW')
         else:
@@ -89,10 +91,11 @@ def desktop_notification(title, text):
     )
     playsound(os.path.join(os.path.dirname(__file__), 'Kea.mp3'))
 
+
 # todo the play vs not play is based on the environment... need to understand... see /home/matt_dumont/aw_qt_notify/notify_overwork.env
 if __name__ == '__main__':
-    #param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
-    #notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
+    # param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
+    # notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
     param_file = sys.argv[1]
     notified_file = sys.argv[2]
     notify_on_amount(param_file, notified_file)
