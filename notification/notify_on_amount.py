@@ -48,7 +48,7 @@ def notify_on_amount(param_file, notified_file):
                 f.write(now.isoformat())
 
         # send desktop notification if computer is still active
-        start = now + datetime.timedelta(minutes=-120)
+        start = now + datetime.timedelta(minutes=-60)
         tempdata = get_afk_data(start.isoformat(), now.isoformat())
         if tempdata is None:
             print('No data guessing by time of day')
@@ -56,6 +56,7 @@ def notify_on_amount(param_file, notified_file):
                 desktop_notification(f'OVERWORKED {round(worked_time - limit)} min!!',
                                      f'You have overworked {round(worked_time - limit)} minutes, STOP NOW')
         else:
+            print('basing notification on activity')
             last_active = tempdata.loc[tempdata.status == 'not-afk', 'duration_min'].sum()
             last_inactive = tempdata.loc[tempdata.status == 'afk', 'duration_min'].sum()
             if last_active >= 0.15 * (last_inactive + last_active):
