@@ -38,9 +38,48 @@ There are three possible ways to handle manual tag overlaps. They are:
   * env.yml --> for a specified conda environment
 * clone this repo no need to add root to pythonpath
 * run .../launch_aw-tag.py to launch using the aforementioned environment
+* on xubuntu 20.04 ... set up as menu option...
+
+# Notification of overwork
+A relatively new feature (expect bugs) allows notification as you get close to your work
+limits. To use this feature you must set up a regular process to run to notify overwork.
+Note at present it will not run while using the manual tag feature (bug).
+
+This will create a desktop notification (with sound) and can optionally text a phone
+the texting uses https://textbelt.com and assumes that you only will send 1 message
+from your IP address, which is free.  It will only send 1 text per day once you reach your limit.
+
+you can specify whether tagged time is included in you total worked time, and you can 
+exclude a set of tags (such as *"personal"*) from your worked time.
 
 
-## Final words
+## parameter and notified file
+* both must be passed to the python script: ./notification/notify_on_amount.py
+
+* you must set up a parameter file see ./notification/example_param_file.txt for an example.
+  * this is where you set the different options:
+    * The number of hours to work before notification
+    * The phone number (or *"none"* to not send texts)
+    * The number of minutes before your work limit to start notifying you
+    * The start time (local time) for notifications... it should only notify when not-afk, but it doesn't always work
+    * The stop time (local time) for notifications... it should only notify when not-afk, but it doesn't always work
+    * The start of your day (local time)
+    * The whether to count tags as worked time
+    * which tags to exclude from the count of work time
+* you must also pass a notified file path, but it does not need to exist.  This is where
+the functions count the number of texts sent.
+
+## installation and setup ubuntu(xubuntu 20.04 has been tested)
+
+* as per above
+* get the correct environment to pass as an environment file to the .service file
+  * TODO if the environment is not correct sound and notification will not work...
+  * still digging into what the correct environment is
+  * I have had success using a non-sudo terminal environment.
+* modify the ./notification/notify_overwork.service and ./notification/notify_overwork.timer
+* set up these timers using systemd
+
+# Final words
 1. Thank you to the ActivityWatch team for implementing for their hard work
 2. Sorry for the rough as guts nature of this gui... It was the best I could do with my skill set and availability.
 3. If anyone wants to improve this, by all means feel free.

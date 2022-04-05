@@ -13,5 +13,4 @@ RestartSec=60
 RemainAfterExit=no
 IgnoreSIGPIPE=no
 
-[Install]
-WantedBy=default.target
+
