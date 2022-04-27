@@ -6,6 +6,7 @@ on: 18/02/22
 import datetime
 import os.path
 import sys
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -45,15 +46,26 @@ def read_param_file(param_file):
 
 def calc_worked_time(start_time, stop_time, inc_tagtime, exclude_tags):
     fraction = 5
+    starts = []
+    stops = []
     manual = get_manual(start_time.isoformat(), stop_time.isoformat())
+    if manual is not None:
+        starts.append(manual.start.min())
+        stops.append(manual.stop.max())
     afk = get_afk_data(start_time.isoformat(), stop_time.isoformat())
-    start_series = min(manual.start.min(), afk.start.min())
-    stop_series = max(manual.stop.max(), afk.stop.max())
+    if afk is not None:
+        starts.append(afk.start.min())
+        stops.append(afk.stop.max())
+    start_series = min(starts)
+    stop_series = max(stops)
     data = pd.DataFrame(data=pd.date_range(start_series, stop_series, freq=f'{fraction}S'), columns=['timestep'])
-    for tag, start, stop in manual.loc[:, ['tag', 'start', 'stop']].itertuples(False, None):
-        data.loc[(data.timestep >= start) & (data.timestep <= stop), 'tag'] = tag
-    for tag, start, stop in afk.loc[:, ['status', 'start', 'stop']].itertuples(False, None):
-        data.loc[(data.timestep >= start) & (data.timestep <= stop), 'afk'] = tag
+    data.loc[:, 'tag'] = None
+    if manual is not None:
+        for tag, start, stop in manual.loc[:, ['tag', 'start', 'stop']].itertuples(False, None):
+            data.loc[(data.timestep >= start) & (data.timestep <= stop), 'tag'] = tag
+    if afk is not None:
+        for tag, start, stop in afk.loc[:, ['status', 'start', 'stop']].itertuples(False, None):
+            data.loc[(data.timestep >= start) & (data.timestep <= stop), 'afk'] = tag
 
     idx = (((data.afk == 'not-afk') & ~np.in1d(data.tag, exclude_tags))
            | ((data.tag.notna()) & ~np.in1d(data.tag, exclude_tags)))
@@ -140,9 +152,9 @@ def desktop_notification(title, text):
 # todo the play vs not play is based on the environment... need to understand... see /home/matt_dumont/aw_qt_notify/notify_overwork.env
 if __name__ == '__main__':
     # the two below are for quick debugging without command line access
-    # param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
-    # notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
-    param_file = sys.argv[1]
-    notified_file = sys.argv[2]
+    param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
+    notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
+    # param_file = sys.argv[1]
+    # notified_file = sys.argv[2]
 
     notify_on_amount(param_file, notified_file)

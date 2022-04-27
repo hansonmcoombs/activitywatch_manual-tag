@@ -216,7 +216,7 @@ def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
         if manual_bucket_id not in aw.get_buckets().keys():
             raise NotImplementedError('manual bucket had not been created yet')
         data = aw.query(query, [(fromdatetime, todatetime)])
-
+        t = aw.get_events(manual_bucket_id,start=fromdatetime,end=todatetime)
     events = [
         {
             "id": e['id'],
