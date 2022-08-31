@@ -82,7 +82,7 @@ def notify_on_amount(param_file, notified_file):
      start_hr, inc_tagtime, exclude_tags, key) = read_param_file(param_file)
 
     start_time = datetime.datetime(today.year, today.month, today.day, hour=start_hr)
-    stop_time = datetime.datetime(today.year, today.month, today.day + 1, hour=start_hr)
+    stop_time = start_time + datetime.timedelta(days=1)
     worked_time = calc_worked_time(start_time, stop_time, inc_tagtime, exclude_tags)
 
     if worked_time >= limit:
