@@ -32,7 +32,8 @@ def delete_manual_data(eid: int, force=False):
     assert t.status_code == 200, t.text
 
 
-def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap='overwrite'):
+def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap='overwrite',
+                    exclude_afk_time=False):
     """
 
     :param start: datetime object utc.
@@ -45,8 +46,11 @@ def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap
                             "underwrite": if the new event overlaps with previous events it will be truncated to prevent
                                           any overlapping data. the previous events will not be impacted.
                             "raise": raises an exception to prevent saving overlapping data.
+    :param exclude_afk_time: bool if True only add the tag to time that is not afk # todo not implmented
     :return:
     """
+    if exclude_afk_time:
+        raise NotImplementedError # todo
     stop = start + datetime.timedelta(seconds=duration)
     assert overlap in ["overwrite", "underwrite", "raise", 'delete']
     events = []

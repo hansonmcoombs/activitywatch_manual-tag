@@ -11,6 +11,7 @@ import numpy as np
 from matplotlib.cm import get_cmap
 from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix, \
     add_manual_data
+from notification.notify_on_amount import read_param_file
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
 
@@ -27,8 +28,10 @@ class AwQtManual(QtGui.QMainWindow):
         'sum by: tag': 'tag',
     }
 
-    def __init__(self, start_day: str):
+    def __init__(self, start_day: str, exclude_tags=tuple()):
         QtWidgets.QMainWindow.__init__(self)
+        self.exclude_afk_time = False
+        self.exclude_tags = tuple(exclude_tags)
         self.bar_plots = []  # to keep track of the barplots that need to be removed
         self.resize(1900, 900)
         area = DockArea()
@@ -126,6 +129,11 @@ class AwQtManual(QtGui.QMainWindow):
         self.overlap_option.currentIndexChanged.connect(self.overlap_sel_change)
         self.overlap_sel_change(1)
 
+        # exclude afk checkbox
+        self.exclude_afk_checkbox = QtGui.QCheckBox("Exclude awk from tag? (not implemented)")
+        self.exclude_afk_checkbox.setChecked(False)
+        self.dock2.addWidget(self.exclude_afk_checkbox)
+
         # tag button
         self.tag_button = QtGui.QPushButton('Tag selected Time')
         self.tag_button.clicked.connect(self.tag_time)
@@ -140,7 +148,8 @@ class AwQtManual(QtGui.QMainWindow):
         low, high = self.selection.getRegion()
         add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
                         duration=high - low, tag=self.tag.text().replace('Tag:', ''),
-                        overlap=self.overlap)
+                        overlap=self.overlap,
+                        exclude_afk_time=self.exclude_afk_checkbox.isChecked())
         self.update_plot_data()
         self.update_datatable(1)
         self.update_legend()
@@ -234,11 +243,17 @@ class AwQtManual(QtGui.QMainWindow):
 
     def update_datatable(self, i):
         j = self.data_selector.currentText()
-        data = self.data[self.data_mapper[j]]
+        dataset_name = self.data_mapper[j]
+        data = self.data[dataset_name]
+        afk_data = self.data['afk_data']
         if data is not None:
-
             df = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
-            df.loc['total'] = data.loc[:, 'duration_min'].sum()
+            df.loc['total'] = df.sum()
+            if dataset_name == 'manual_data' and len(self.exclude_tags) > 0:
+                exclude_time = df.loc[df.index[np.in1d(df.index, self.exclude_tags)]].sum()
+                df.loc['total - exclude tags'] = df.loc['total'] - exclude_time
+                # todo total + untagged not afk
+                # todo total + untagged not afk - exclude tags
             df.loc[:, 'duration_format'] = [f'{int(e // 60):02d}:{int(e % 60):02d}' for e in df.duration_min]
             temp = df.loc[:, ['duration_format']].to_records()
             self.show_data = temp
@@ -340,7 +355,15 @@ class AwQtManual(QtGui.QMainWindow):
 
 
 def main():
+    from pathlib import Path
+    try:
+        (limit, text_num, message, countdown_start, notifications_start,
+         notifications_stop, start_hr, inc_tagtime, exclude_tags, key) = read_param_file(
+            Path.home().joinpath('aw_qt_notify/notify_overwork_params.txt'))
+    except Exception:
+        exclude_tags = []
+        pass
     app = pg.mkQApp()
-    loader = AwQtManual(datetime.date.today().isoformat())
+    loader = AwQtManual(datetime.date.today().isoformat(), exclude_tags=exclude_tags)
     proxy = pg.SignalProxy(loader.data_plot.scene().sigMouseMoved, rateLimit=60, slot=loader.mouseMoved)
     pg.exec()
