@@ -10,7 +10,7 @@ from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 import numpy as np
 from matplotlib.cm import get_cmap
 from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix, \
-    add_manual_data
+    add_manual_data, get_total_untagged_not_afk_data
 from notification.notify_on_amount import read_param_file
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
@@ -245,15 +245,18 @@ class AwQtManual(QtGui.QMainWindow):
         j = self.data_selector.currentText()
         dataset_name = self.data_mapper[j]
         data = self.data[dataset_name]
-        afk_data = self.data['afk_data']
         if data is not None:
             df = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
             df.loc['total'] = df.sum()
             if dataset_name == 'manual_data' and len(self.exclude_tags) > 0:
                 exclude_time = df.loc[df.index[np.in1d(df.index, self.exclude_tags)]].sum()
+                untagged_notafk = get_total_untagged_not_afk_data(self.data['afk_data'], self.data['manual_data']) / 60
+                df.loc['exclude tags'] = exclude_time
+                df.loc['untag(~afk)'] = untagged_notafk
                 df.loc['total - exclude tags'] = df.loc['total'] - exclude_time
-                # todo total + untagged not afk
-                # todo total + untagged not afk - exclude tags
+                df.loc['total + untag(~afk)'] = df.loc['total'] + untagged_notafk
+                df.loc['total + untag(~afk) - exclude tags'] = df.loc['total'] - exclude_time + untagged_notafk
+
             df.loc[:, 'duration_format'] = [f'{int(e // 60):02d}:{int(e % 60):02d}' for e in df.duration_min]
             temp = df.loc[:, ['duration_format']].to_records()
             self.show_data = temp

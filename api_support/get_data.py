@@ -8,6 +8,7 @@ import socket
 import pandas as pd
 from aw_client import ActivityWatchClient
 from aw_core import Event
+import  numpy as np
 
 manual_bucket_id = f'ui-manual_{socket.gethostname()}'
 
@@ -50,7 +51,7 @@ def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap
     :return:
     """
     if exclude_afk_time:
-        raise NotImplementedError # todo
+        raise NotImplementedError  # todo
     stop = start + datetime.timedelta(seconds=duration)
     assert overlap in ["overwrite", "underwrite", "raise", 'delete']
     events = []
@@ -220,7 +221,7 @@ def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
         if manual_bucket_id not in aw.get_buckets().keys():
             raise NotImplementedError('manual bucket had not been created yet')
         data = aw.query(query, [(fromdatetime, todatetime)])
-        t = aw.get_events(manual_bucket_id,start=fromdatetime,end=todatetime)
+        t = aw.get_events(manual_bucket_id, start=fromdatetime, end=todatetime)
     events = [
         {
             "id": e['id'],
@@ -289,6 +290,29 @@ def get_afk_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df.loc[:, 'duration_min'] = temp
     return df
 
+
+def get_total_untagged_not_afk_data(afk_data, manual_data):
+    """
+    return seconds of untagged notafk time
+    :param fromdatetime:
+    :param todatetime:
+    :return:
+    """
+    total = 0
+    afk_data = afk_data.loc[afk_data.status != 'afk']
+    for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
+        astart = astart.round('s')
+        astop = astop.round('s')
+        temp = manual_data.loc[(manual_data.start < astop) & (manual_data.stop > astart)]
+        if temp.empty:
+            continue
+        tags = []
+        for mstart, mstop in temp.loc[:, ['start', 'stop']].itertuples(False, None):
+            tags.extend(pd.date_range(mstart.round('s'), mstop.round('s'), freq='s'))
+        not_afk = pd.date_range(astart, astop, freq='s')
+        total += (~np.in1d(not_afk, tags)).sum()
+
+    return total
 
 def get_window_watcher_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     """
@@ -374,5 +398,7 @@ create_manual_bucket()
 if __name__ == '__main__':
     # delete_manual_data(342)
     start = datetime.datetime.today()
-    t = get_window_watcher_data((start + datetime.timedelta(days=-1)).isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+    t = get_total_untagged_not_afk_data((start + datetime.timedelta(days=-1)).isoformat(),
+                                        (start + datetime.timedelta(days=1)).isoformat())
+    print(t)
     pass
