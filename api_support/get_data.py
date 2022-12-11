@@ -291,7 +291,7 @@ def get_afk_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     return df
 
 
-def get_total_untagged_not_afk_data(afk_data, manual_data):
+def get_total_untagged_not_afk_data(afk_data, manual_data):  # todo make to the nearest minute
     """
     return seconds of untagged notafk time
     :param fromdatetime:
@@ -303,7 +303,7 @@ def get_total_untagged_not_afk_data(afk_data, manual_data):
     for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
         astart = astart.round('s')
         astop = astop.round('s')
-        temp = manual_data.loc[(manual_data.start < astop) & (manual_data.stop > astart)]
+        temp = manual_data.loc[(manual_data.start < astop) & (manual_data.stop > astart)] # todo don't do this, killing partial overlaps?
         if temp.empty:
             continue
         tags = []
