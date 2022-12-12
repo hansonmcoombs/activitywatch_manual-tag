@@ -299,8 +299,8 @@ def get_total_untagged_not_afk_data(afk_data, manual_data):  # todo make to the 
     :return:
     """
     total = 0
-    afk_data = afk_data.loc[afk_data.status != 'afk']
-    for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
+
+    for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):  # todo T is minutely
         astart = astart.round('s')
         astop = astop.round('s')
         temp = manual_data.loc[(manual_data.start < astop) & (manual_data.stop > astart)] # todo don't do this, killing partial overlaps?
