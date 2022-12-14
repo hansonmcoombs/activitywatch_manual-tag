@@ -202,6 +202,77 @@ def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap
         delete_manual_data(idv)
 
 
+def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
+                       afk_data, manual_data, overlap='overwrite',
+                       exclude_afk_time=False):
+    """
+
+    :param start: datetime object utc.
+    :param duration: seconds
+    :param tag: str, tag
+    :param overlap: one of: "overwrite": if the new event overlaps with previous events then all events will
+                                         deleted and replace with new events where the passed (new) event is kept
+                                         completely and the overlapped events (old) are truncated to prevent any overlap
+                                         in the database
+                            "underwrite": if the new event overlaps with previous events it will be truncated to prevent
+                                          any overlapping data. the previous events will not be impacted.
+                            "raise": raises an exception to prevent saving overlapping data.
+    :param exclude_afk_time: bool if True only add the tag to time that is not afk # todo not implmented
+    :return:
+    """
+
+    assert overlap in ["overwrite", "underwrite", "raise", 'delete']
+    stop = start + datetime.timedelta(seconds=duration)
+    all_data = pd.DataFrame(index=pd.date_range(pd.to_datetime(start).round('T'),
+                                                pd.to_datetime(stop).round('T'), freq='T'),
+                            columns=['afk', 'manual_id']
+                            )
+    all_data.loc[:, 'afk'] = False
+    all_data.loc[:, 'manual_id'] = None
+
+    if exclude_afk_time:
+        if afk_data is not None:
+            afk_data = afk_data.loc[afk_data.status == 'afk']
+            for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
+                astart = astart.round('T')
+                astop = astop.round('T')
+                all_data.loc[astart:astop, 'afk'] = True
+
+        raise NotImplementedError  # todo
+    if manual_data is not None:
+        for mid, mstart, mstop in manual_data.loc[:, ['start', 'stop']].itertuples(True, None):
+            mstart = mstart.round('T')
+            mstop = mstop.round('T')
+            all_data.loc[mstart:mstop, 'manual_id'] = mid
+
+    events = []
+    delete_events = []
+    if overlap == 'delete':
+        delete_events.extend(all_data.loc[:, 'manual_id'].dropna().unique())
+    elif overlap == "overwrite":
+        delete_events.extend(all_data.loc[:, 'manual_id'].dropna().unique())
+    elif overlap == "underwrite":
+        all_data = all_data.loc[all_data.manual_id.isna()]
+    elif overlap == "raise":
+        if all_data.loc[:, 'manual_id'].notna():
+            raise ValueError('stopped to prevent overlapping events')
+    else:
+        raise ValueError("should not get here")
+
+    if exclude_afk_time:
+        all_data = all_data.loc[~all_data.afk]
+    # todo make events!
+    if overlap != 'delete':
+        events = _create_events_from_regular_data(all_data, tag)
+
+    for idv in pd.unique(delete_events):
+        delete_manual_data(idv)
+
+    with ActivityWatchClient() as aw:
+        for event in events:
+            aw.insert_event(manual_bucket_id, event=event)
+
+
 def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     """
     return manual data in utc time
@@ -400,9 +471,45 @@ def get_labels_from_unix(unix, afk_data, ww_data, manual):
     return tag, tag_dur, afk, afk_dur, cur_app, window, ww_dur
 
 
+def _create_events_from_regular_data(data, tag):
+    use_data = pd.DataFrame(index=np.arange(len(data)))
+    use_data.loc[:, 'start'] = pd.Series(data.index)
+    use_data.loc[:, 'shifter'] = pd.Series(data.index).shift(1)
+    use_data.loc[0, 'shifter'] = use_data.loc[1, 'shifter'] - pd.Timedelta(minutes=1)
+    use_data.loc[:, 'group'] = (use_data.start != use_data.shifter + pd.Timedelta(minutes=1)).cumsum()
+
+    total_data = use_data.groupby('group').agg({'start': 'min', 'shifter': 'count'})
+
+    events = []
+    for s, d in total_data.itertuples(False, None):  # todo need to convert to unix time then should work
+        temp = Event(timestamp=datetime.datetime.fromtimestamp(s, datetime.timezone.utc), duration=d * 60,
+                     data=dict(tag=tag))
+        events.append(temp)
+    return events
+
+
+def _test_create_events_from_regular_data():
+    t = pd.Series(pd.date_range('2021-01-01', '2021-01-02', freq='T'))
+    t = t.drop([15, 21, 45, 500])
+    events = _create_events_from_regular_data(pd.DataFrame(index=t), 'test')
+
+    expected_starts = [
+        '2021-01-01 00:00:00'
+        '2021-01-01 00:16:00'
+        '2021-01-01 00:22:00'
+        '2021-01-01 00:46:00'
+        '2021-01-01 08:21:00'
+    ]
+    expected_starts = pd.to_datetime(expected_starts)
+    expected_durs = [15, 5, 23, 454, 940]
+    correct = []
+    for e, d, s in zip(events, expected_durs, expected_starts):
+        correct.append((e.timestamp == s) and (e.duration.total_seconds() == d * 60))
+    assert all(correct)
+
+
 create_manual_bucket()
 
 if __name__ == '__main__':
-    # delete_manual_data(342)
-    start = datetime.datetime.today()
+    _test_create_events_from_regular_data()
     pass
