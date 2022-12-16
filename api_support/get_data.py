@@ -226,21 +226,27 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
     stop = start + datetime.timedelta(seconds=duration)
     start = pd.to_datetime(start).round('T')
     stop = pd.to_datetime(stop).round('T')
-    # todo all data needs to be the range for manual data (or start/stop)
-    all_data = pd.DataFrame(index=pd.date_range(pd.to_datetime(start).round('T'),
-                                                pd.to_datetime(stop).round('T'), freq='T'),
-                            columns=['afk', 'manual_id', 'tag', 'make', 'new_tag']
-                            )
+
+    manual_start = start
+    manual_stop = stop
+    if manual_data is not None:
+        manual_start = manual_data.start.round('T').min()
+        manual_stop = manual_data.stop.round('T').max()
+
+    all_data = pd.DataFrame(
+        index=pd.date_range(min(start, manual_start),
+                            max(stop, manual_stop),
+                            freq='T'),
+        columns=['afk', 'prev_manual_id', 'make', 'new_tag', 'prev_tag']
+    )
     all_data.loc[:, 'afk'] = False
-    all_data.loc[:, 'manual_id'] = None
+    all_data.loc[:, 'prev_manual_id'] = None
     all_data.loc[:, 'make'] = False
-    all_data.loc[:, 'new_tag'] = False
+    all_data.loc[:, 'new_tag'] = None
+    all_data.loc[:, 'prev_tag'] = None
 
     all_data.loc[start:stop, 'make'] = True
-    all_data.loc[start:stop, 'new_tag'] = True
-    all_data.loc[start:stop, 'tag'] = tag
-
-    # todo overlaps kills the full tag for preivous manual I need to re-make it
+    all_data.loc[start:stop, 'new_tag'] = tag
 
     if exclude_afk_time:
         if afk_data is not None:
@@ -251,36 +257,45 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
                 all_data.loc[astart:astop, 'make'] = False
 
     if manual_data is not None:
-        for mid, mstart, mstop in manual_data.loc[:, ['start', 'stop']].itertuples(True, None):
+        for mid, mstart, mstop, t in manual_data.loc[:, ['start', 'stop', 'tag']].itertuples(True, None):
             mstart = mstart.round('T')
-            mstop = mstop.round('T')
-            all_data.loc[mstart:mstop, 'manual_id'] = mid
-            # todo add tag data
-
-    # todo
+            mstop = mstop.round('T') - pd.Timedelta(minutes=1)
+            all_data.loc[mstart:mstop, 'prev_manual_id'] = mid
+            all_data.loc[mstart:mstop, 'prev_tag'] = t
 
     events = []
     delete_events = []
     if overlap == 'delete':
-        delete_events.extend(all_data.loc[:, 'manual_id'].dropna().unique())
+        delete_events.extend(all_data.loc[all_data.new_tag.notna(), 'prev_manual_id'].dropna().unique())
     elif overlap == "overwrite":
-        delete_events.extend(all_data.loc[:, 'manual_id'].dropna().unique())
-        # todo switch to make, need to re-rmake the older tags
+        delete_events.extend(all_data.loc[:, 'prev_manual_id'].dropna().unique())
+        for mid in delete_events:
+            idx = (all_data.loc[:, 'prev_manual_id'] == mid) & (all_data.loc[:, 'new_tag'].isna())
+            all_data.loc[idx, 'make'] = True
+            idx = (all_data.loc[:, 'prev_manual_id'] == mid) & (all_data.loc[:, 'new_tag'].notna())
+            all_data.loc[idx, 'prev_tag'] = None
+
+
     elif overlap == "underwrite":
-        all_data = all_data.loc[all_data.manual_id.isna()]  # todo switch to make
+        all_data.loc[all_data.prev_manual_id.notna(), 'make'] = False
     elif overlap == "raise":
-        if all_data.loc[:, 'manual_id'].notna():
+        if (all_data.loc[:, 'prev_manual_id'].notna() & all_data.make).any():
             raise ValueError('stopped to prevent overlapping events')
     else:
         raise ValueError("should not get here")
 
+    # make events
+    all_data = all_data.loc[all_data.make]
+    if overlap != 'delete' and not all_data.empty:
+        assert (all_data.loc[:, ['prev_tag', 'new_tag']].notna().sum(axis=1) == 1).all()
+        all_data.loc[:, 'make_tag'] = None
+        all_data.loc[all_data.prev_tag.notna(), 'make_tag'] = all_data.loc[all_data.prev_tag.notna(), 'prev_tag']
+        all_data.loc[all_data.new_tag.notna(), 'make_tag'] = all_data.loc[all_data.new_tag.notna(), 'new_tag']
+        for t in all_data.make_tag.unique():
+            events.extend(_create_events_from_regular_data(all_data.loc[all_data.make_tag == t], t))
+
     for idv in pd.unique(delete_events):
         delete_manual_data(idv)
-    # todo remove not make data
-    # make events
-    if overlap != 'delete':
-        # todo for each tag, make events
-        events = _create_events_from_regular_data(all_data, tag)
 
     with ActivityWatchClient() as aw:
         for event in events:
@@ -383,8 +398,6 @@ def get_total_untagged_not_afk_data(afk_data, manual_data):
     :param manual_data: manual data
     :return: seconds of time not in a manual tag and not afk
     """
-    print(afk_data)
-    print(manual_data)
     all_data = pd.DataFrame(
         index=pd.date_range(min(afk_data.start.min(), manual_data.start.min()),
                             max(afk_data.stop.max(), manual_data.stop.max()),
