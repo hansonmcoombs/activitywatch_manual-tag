@@ -3,14 +3,11 @@ created matt_dumont
 on: 6/02/22
 """
 import datetime
-import time
-
 import pandas as pd
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 import numpy as np
-from matplotlib.cm import get_cmap
 from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix, \
-    add_manual_data, get_total_untagged_not_afk_data
+    get_total_untagged_not_afk_data, add_manual_data_v2
 from notification.notify_on_amount import read_param_file
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
@@ -146,10 +143,11 @@ class AwQtManual(QtGui.QMainWindow):
 
     def tag_time(self):
         low, high = self.selection.getRegion()
-        add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
-                        duration=high - low, tag=self.tag.text().replace('Tag:', ''),
-                        overlap=self.overlap,
-                        exclude_afk_time=self.exclude_afk_checkbox.isChecked())
+        add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
+                           duration=high - low, tag=self.tag.text().replace('Tag:', ''),
+                           overlap=self.overlap,
+                           exclude_afk_time=self.exclude_afk_checkbox.isChecked(),
+                           afk_data=self.data['afk_data'], manual_data=self.data['manual_data'])
         self.update_plot_data()
         self.update_datatable(1)
         self.update_legend()
@@ -234,9 +232,9 @@ class AwQtManual(QtGui.QMainWindow):
     def delete_events(self):
         self.delete_legend()
         low, high = self.selection.getRegion()
-        add_manual_data(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
-                        duration=high - low, tag=self.tag.text().replace('Tag:', ''),
-                        overlap='delete')
+        add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
+                           duration=high - low, tag=self.tag.text().replace('Tag:', ''),
+                           overlap='delete', afk_data=self.data['afk_data'], manual_data=self.data['manual_data'])
         self.update_plot_data()
         self.update_datatable(1)
         self.update_legend()

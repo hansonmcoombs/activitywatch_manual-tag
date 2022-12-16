@@ -47,11 +47,12 @@ def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap
                             "underwrite": if the new event overlaps with previous events it will be truncated to prevent
                                           any overlapping data. the previous events will not be impacted.
                             "raise": raises an exception to prevent saving overlapping data.
-    :param exclude_afk_time: bool if True only add the tag to time that is not afk # todo not implmented
+    :param exclude_afk_time: bool if True only add the tag to time that is not afk
     :return:
     """
+    raise NotImplementedError('depreciated, use add_manual_data_v2')
     if exclude_afk_time:
-        raise NotImplementedError  # todo
+        raise NotImplementedError
     stop = start + datetime.timedelta(seconds=duration)
     assert overlap in ["overwrite", "underwrite", "raise", 'delete']
     events = []
@@ -217,18 +218,29 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
                             "underwrite": if the new event overlaps with previous events it will be truncated to prevent
                                           any overlapping data. the previous events will not be impacted.
                             "raise": raises an exception to prevent saving overlapping data.
-    :param exclude_afk_time: bool if True only add the tag to time that is not afk # todo not implmented
+    :param exclude_afk_time: bool if True only add the tag to time that is not afk
     :return:
     """
 
     assert overlap in ["overwrite", "underwrite", "raise", 'delete']
     stop = start + datetime.timedelta(seconds=duration)
+    start = pd.to_datetime(start).round('T')
+    stop = pd.to_datetime(stop).round('T')
+    # todo all data needs to be the range for manual data (or start/stop)
     all_data = pd.DataFrame(index=pd.date_range(pd.to_datetime(start).round('T'),
                                                 pd.to_datetime(stop).round('T'), freq='T'),
-                            columns=['afk', 'manual_id']
+                            columns=['afk', 'manual_id', 'tag', 'make', 'new_tag']
                             )
     all_data.loc[:, 'afk'] = False
     all_data.loc[:, 'manual_id'] = None
+    all_data.loc[:, 'make'] = False
+    all_data.loc[:, 'new_tag'] = False
+
+    all_data.loc[start:stop, 'make'] = True
+    all_data.loc[start:stop, 'new_tag'] = True
+    all_data.loc[start:stop, 'tag'] = tag
+
+    # todo overlaps kills the full tag for preivous manual I need to re-make it
 
     if exclude_afk_time:
         if afk_data is not None:
@@ -236,14 +248,16 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
             for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
                 astart = astart.round('T')
                 astop = astop.round('T')
-                all_data.loc[astart:astop, 'afk'] = True
+                all_data.loc[astart:astop, 'make'] = False
 
-        raise NotImplementedError  # todo
     if manual_data is not None:
         for mid, mstart, mstop in manual_data.loc[:, ['start', 'stop']].itertuples(True, None):
             mstart = mstart.round('T')
             mstop = mstop.round('T')
             all_data.loc[mstart:mstop, 'manual_id'] = mid
+            # todo add tag data
+
+    # todo
 
     events = []
     delete_events = []
@@ -251,22 +265,22 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
         delete_events.extend(all_data.loc[:, 'manual_id'].dropna().unique())
     elif overlap == "overwrite":
         delete_events.extend(all_data.loc[:, 'manual_id'].dropna().unique())
+        # todo switch to make, need to re-rmake the older tags
     elif overlap == "underwrite":
-        all_data = all_data.loc[all_data.manual_id.isna()]
+        all_data = all_data.loc[all_data.manual_id.isna()]  # todo switch to make
     elif overlap == "raise":
         if all_data.loc[:, 'manual_id'].notna():
             raise ValueError('stopped to prevent overlapping events')
     else:
         raise ValueError("should not get here")
 
-    if exclude_afk_time:
-        all_data = all_data.loc[~all_data.afk]
-    # todo make events!
-    if overlap != 'delete':
-        events = _create_events_from_regular_data(all_data, tag)
-
     for idv in pd.unique(delete_events):
         delete_manual_data(idv)
+    # todo remove not make data
+    # make events
+    if overlap != 'delete':
+        # todo for each tag, make events
+        events = _create_events_from_regular_data(all_data, tag)
 
     with ActivityWatchClient() as aw:
         for event in events:
@@ -481,26 +495,25 @@ def _create_events_from_regular_data(data, tag):
     total_data = use_data.groupby('group').agg({'start': 'min', 'shifter': 'count'})
 
     events = []
-    for s, d in total_data.itertuples(False, None):  # todo need to convert to unix time then should work
-        temp = Event(timestamp=datetime.datetime.fromtimestamp(s, datetime.timezone.utc), duration=d * 60,
+    for s, d in total_data.itertuples(False, None):
+        temp = Event(timestamp=s.to_pydatetime(), duration=d * 60,
                      data=dict(tag=tag))
         events.append(temp)
     return events
 
 
 def _test_create_events_from_regular_data():
-    t = pd.Series(pd.date_range('2021-01-01', '2021-01-02', freq='T'))
+    t = pd.Series(pd.date_range('2021-01-01', '2021-01-02', freq='T', tz=datetime.timezone.utc))
     t = t.drop([15, 21, 45, 500])
     events = _create_events_from_regular_data(pd.DataFrame(index=t), 'test')
 
     expected_starts = [
-        '2021-01-01 00:00:00'
-        '2021-01-01 00:16:00'
-        '2021-01-01 00:22:00'
-        '2021-01-01 00:46:00'
-        '2021-01-01 08:21:00'
+        datetime.datetime(year=2021, month=1, day=1, hour=0, minute=00, tzinfo=datetime.timezone.utc),
+        datetime.datetime(year=2021, month=1, day=1, hour=0, minute=16, tzinfo=datetime.timezone.utc),
+        datetime.datetime(year=2021, month=1, day=1, hour=0, minute=22, tzinfo=datetime.timezone.utc),
+        datetime.datetime(year=2021, month=1, day=1, hour=0, minute=46, tzinfo=datetime.timezone.utc),
+        datetime.datetime(year=2021, month=1, day=1, hour=8, minute=21, tzinfo=datetime.timezone.utc),
     ]
-    expected_starts = pd.to_datetime(expected_starts)
     expected_durs = [15, 5, 23, 454, 940]
     correct = []
     for e, d, s in zip(events, expected_durs, expected_starts):
