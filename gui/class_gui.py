@@ -98,43 +98,47 @@ class AwQtManual(QtGui.QMainWindow):
         # delete button
         self.delete_button = QtGui.QPushButton('Delete tags in selected time')
         self.delete_button.clicked.connect(self.delete_events)
-        self.dock2.addWidget(self.delete_button)
+        self.dock2.addWidget(self.delete_button, 0, 0)
 
         self.date_edit = QtWidgets.QDateEdit(calendarPopup=True)
         self.date_edit.setDateTime(self.day_dt)
         self.date_edit.dateChanged.connect(self.change_date)
-        self.dock2.addWidget(self.date_edit)
+        self.dock2.addWidget(self.date_edit, 1, 0)
 
         self.data_selector = QtGui.QComboBox()
         self.data_selector.addItem('sum by: afk')  # afk_data
         self.data_selector.addItem('sum by: app')  # ww_data
         self.data_selector.addItem('sum by: tag')  # manual_data
-        self.dock2.addWidget(self.data_selector)
+        self.dock2.addWidget(self.data_selector, 2, 0)
         self.update_datatable(1)
         self.data_selector.currentIndexChanged.connect(self.update_datatable)
 
         # tag text area
-        self.tag = QtGui.QLineEdit('Tag:')
-        self.dock2.addWidget(self.tag)
+        horizontal = QtGui.QHBoxLayout()
+        label = QtGui.QLabel("Tag:")
+        self.tag = QtGui.QLineEdit('')
+        horizontal.addWidget(label)
+        horizontal.addWidget(self.tag)
+        self.dock2.layout.addLayout(horizontal, 3, 0)
 
         # overlap option
         self.overlap_option = QtGui.QComboBox()
         self.overlap_option.addItem('overwrite')  # afk_data
         self.overlap_option.addItem('underwrite')  # ww_data
         self.overlap_option.addItem('raise')  # manual_data
-        self.dock2.addWidget(self.overlap_option)
+        self.dock2.addWidget(self.overlap_option, 4,0)
         self.overlap_option.currentIndexChanged.connect(self.overlap_sel_change)
         self.overlap_sel_change(1)
 
         # exclude afk checkbox
-        self.exclude_afk_checkbox = QtGui.QCheckBox("Exclude awk from tag? (not implemented)")
+        self.exclude_afk_checkbox = QtGui.QCheckBox("Exclude afk from tag?")
         self.exclude_afk_checkbox.setChecked(False)
-        self.dock2.addWidget(self.exclude_afk_checkbox)
+        self.dock2.addWidget(self.exclude_afk_checkbox, 5,0)
 
         # tag button
         self.tag_button = QtGui.QPushButton('Tag selected Time')
         self.tag_button.clicked.connect(self.tag_time)
-        self.dock2.addWidget(self.tag_button)
+        self.dock2.addWidget(self.tag_button, 6,0)
 
     def initialize_datatable(self):
         self.datatable = pg.TableWidget()
