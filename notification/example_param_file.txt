@@ -1,5 +1,7 @@
 # number of hours to work
 3.5
+# number of hours to notify
+4.25
 # Phone number (with area code e.g +12345678 to text on overwork 'none' to not send messages
 none
 # message to send to the text message

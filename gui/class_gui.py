@@ -126,19 +126,19 @@ class AwQtManual(QtGui.QMainWindow):
         self.overlap_option.addItem('overwrite')  # afk_data
         self.overlap_option.addItem('underwrite')  # ww_data
         self.overlap_option.addItem('raise')  # manual_data
-        self.dock2.addWidget(self.overlap_option, 4,0)
+        self.dock2.addWidget(self.overlap_option, 4, 0)
         self.overlap_option.currentIndexChanged.connect(self.overlap_sel_change)
         self.overlap_sel_change(1)
 
         # exclude afk checkbox
         self.exclude_afk_checkbox = QtGui.QCheckBox("Exclude afk from tag?")
         self.exclude_afk_checkbox.setChecked(False)
-        self.dock2.addWidget(self.exclude_afk_checkbox, 5,0)
+        self.dock2.addWidget(self.exclude_afk_checkbox, 5, 0)
 
         # tag button
         self.tag_button = QtGui.QPushButton('Tag selected Time')
         self.tag_button.clicked.connect(self.tag_time)
-        self.dock2.addWidget(self.tag_button, 6,0)
+        self.dock2.addWidget(self.tag_button, 6, 0)
 
     def initialize_datatable(self):
         self.datatable = pg.TableWidget()
@@ -362,7 +362,7 @@ class AwQtManual(QtGui.QMainWindow):
 def main():
     from pathlib import Path
     try:
-        (limit, text_num, message, countdown_start, notifications_start,
+        (limit, limit_txt, text_num, message, countdown_start, notifications_start,
          notifications_stop, start_hr, inc_tagtime, exclude_tags, key) = read_param_file(
             Path.home().joinpath('aw_qt_notify/notify_overwork_params.txt'))
     except Exception:

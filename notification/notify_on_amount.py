@@ -23,24 +23,25 @@ def read_param_file(param_file):
         lines = f.readlines()
         lines = [l for l in lines if l[0] != '#']
         limit = float(lines[0]) * 60  # expects decimal hours
-        text_num = lines[1].strip()
+        limit_txt = float(lines[1]) * 60  # expects decimal hours
+        text_num = lines[2].strip()
         if text_num.lower() == 'none':
             text_num = None
-        message = lines[2].strip()
-        countdown_start = float(lines[3])  # expects minutes before to let you know that you are almost done
-        notifications_start = int(lines[4])  # won't send notification before hour
-        notifications_stop = int(lines[5])  # won't send notification after hour
-        start_hr = int(lines[6])
-        inc_tagtime = lines[7].strip()
+        message = lines[3].strip()
+        countdown_start = float(lines[4])  # expects minutes before to let you know that you are almost done
+        notifications_start = int(lines[5])  # won't send notification before hour
+        notifications_stop = int(lines[6])  # won't send notification after hour
+        start_hr = int(lines[7])
+        inc_tagtime = lines[8].strip()
         if inc_tagtime.lower() == 'true':
             inc_tagtime = True
         else:
             inc_tagtime = False
 
-        exclude_tags = [l.strip() for l in lines[8].strip().split(',') if l != '']
-        key = lines[9].strip()
+        exclude_tags = [l.strip() for l in lines[9].strip().split(',') if l != '']
+        key = lines[10].strip()
 
-    return (limit, text_num, message, countdown_start, notifications_start,
+    return (limit, limit_txt, text_num, message, countdown_start, notifications_start,
             notifications_stop, start_hr, inc_tagtime, exclude_tags, key)
 
 
@@ -77,7 +78,7 @@ def calc_worked_time(start_time, stop_time, inc_tagtime, exclude_tags):
 
 def notify_on_amount(param_file, notified_file):
     os.makedirs(os.path.dirname(notified_file), exist_ok=True)
-    (limit, text_num, message, countdown_start,
+    (limit, limit_txt, text_num, message, countdown_start,
      notifications_start, notifications_stop,
      start_hr, inc_tagtime, exclude_tags, key) = read_param_file(param_file)
 
@@ -85,7 +86,8 @@ def notify_on_amount(param_file, notified_file):
     stop_time = start_time + datetime.timedelta(days=1)
     worked_time = calc_worked_time(start_time, stop_time, inc_tagtime, exclude_tags)
 
-    if worked_time >= limit:
+    # text notification limits
+    if worked_time >= limit_txt:
         if os.path.exists(notified_file):
             with open(notified_file, 'r') as f:
                 last_sent = datetime.datetime.fromisoformat(f.readline())
@@ -100,6 +102,8 @@ def notify_on_amount(param_file, notified_file):
             with open(notified_file, 'w') as f:
                 f.write(now.isoformat())
 
+    # desktop notification limits
+    if worked_time >= limit:
         # send desktop notification if computer is still active
         start = now + datetime.timedelta(minutes=-60)
         tempdata = get_afk_data(start.isoformat(), now.isoformat())
