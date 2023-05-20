@@ -7,7 +7,7 @@ import datetime
 import os.path
 import sys
 from copy import deepcopy
-
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import numpy as np
 import pandas as pd
 from plyer import notification
@@ -85,6 +85,7 @@ def notify_on_amount(param_file, notified_file):
     start_time = datetime.datetime(today.year, today.month, today.day, hour=start_hr)
     stop_time = start_time + datetime.timedelta(days=1)
     worked_time = calc_worked_time(start_time, stop_time, inc_tagtime, exclude_tags)
+    print(f'{worked_time=} {limit=} {limit_txt=}')
 
     # text notification limits
     if worked_time >= limit_txt:
@@ -116,6 +117,7 @@ def notify_on_amount(param_file, notified_file):
             print('basing notification on activity')
             last_active = tempdata.loc[tempdata.status == 'not-afk', 'duration_min'].sum()
             last_inactive = tempdata.loc[tempdata.status == 'afk', 'duration_min'].sum()
+            print(f'{last_active=}, {last_inactive=}')
             if last_active >= 0.15 * (last_inactive + last_active):
                 # 15% of the last hour active... create notificcation
                 desktop_notification(f'OVERWORKED {round(worked_time - limit)} min!!',
@@ -147,7 +149,7 @@ def desktop_notification(title, text):
         # title of the notification,
         title=title,
         message=text,
-        app_icon=None,
+        app_icon=os.path.join(os.path.dirname(__file__), 'kea.png'),
         timeout=20
     )
     playsound(os.path.join(os.path.dirname(__file__), 'Kea.mp3'))
@@ -156,9 +158,11 @@ def desktop_notification(title, text):
 # todo the play vs not play is based on the environment... need to understand... see /home/matt_dumont/aw_qt_notify/notify_overwork.env
 if __name__ == '__main__':
     # the two below are for quick debugging without command line access
-    param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
-    notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
-    # param_file = sys.argv[1]
-    # notified_file = sys.argv[2]
+    # param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
+    # notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
+    param_file = sys.argv[1]
+    notified_file = sys.argv[2]
+    print(f'inputs: {param_file=} {notified_file=}')
+    print(sys.path)
 
     notify_on_amount(param_file, notified_file)

@@ -6,10 +6,10 @@ Description=notify_overwork, expected to run every 10 min or so
 User=matt_dumont
 Type=simple
 EnvironmentFile=/home/matt_dumont/aw_qt_notify/notify_overwork.env
-ExecStart=/home/matt_dumont/miniconda3/bin/conda run -n aw_qt python /home/matt_dumont/PycharmProjects/activitywatch_ui/notification/notify_on_amount.py /home/matt_dumont/aw_qt_notify/notify_overwork_params.txt /home/matt_dumont/aw_qt_notify/notify_overwork_run.txt
+ExecStart=/home/matt_dumont/miniconda3/bin/conda run -n aw_qt python /home/matt_dumont/activitywatch_manual-tag/notification/notify_on_amount.py /home/matt_dumont/aw_qt_notify/notify_overwork_params.txt /home/matt_dumont/aw_qt_notify/notify_overwork_run.txt
 ExecStop=
 Restart=on-failure
-RestartSec=60
+RestartSec=10
 RemainAfterExit=no
 IgnoreSIGPIPE=no
 

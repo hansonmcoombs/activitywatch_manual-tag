@@ -32,13 +32,24 @@ There are three possible ways to handle manual tag overlaps. They are:
 ## installation
 
 * ensure ActivityWatch is installed and active
-    * see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
+    * download the latest release: https://activitywatch.net/
+    * mkdir ~/activitywatch
+    * unzip: unzip {file.zip} -d ~/activitywatch
+    * add ~/activitywatch/aw-qt to autostart
+    * for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
+* clone this repo no need to add root to pythonpath
+  * git clone git@github.com:hansonmcoombs/activitywatch_manual-tag.git ~/activitywatch_manual-tag
 * install the requisite python environment, see
+  * conda env create --file ~/activitywatch_manual-tag/env.yml
   * env.txt --> for a loose list of packages
   * env.yml --> for a specified conda environment
-* clone this repo no need to add root to pythonpath
 * run .../launch_aw-tag.py to launch using the aforementioned environment
-* on xubuntu 20.04 ... set up as menu option...
+* add menu item
+  * settings -> menu editor --> add
+    * title: ActivityWatch Tag-Time
+  * {path to home}/miniconda3/bin/conda run -n aw_qt python {path to home}/activitywatch_manual-tag/launch_aw-tag.py
+  * if you want to be fancy add the aw logo: ~/activitywatch/aw-server/aw_server/static/static/logo.png
+
 
 # Notification of overwork
 A relatively new feature (expect bugs) allows notification as you get close to your work
