@@ -13,7 +13,7 @@ import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
 
 
-class AwQtManual(QtGui.QMainWindow):
+class AwQtManual(QtWidgets.QMainWindow):
     data_mapper = {
         'sum by: afk': 'afk_data',
         'sum by: app': 'ww_data',
@@ -96,7 +96,7 @@ class AwQtManual(QtGui.QMainWindow):
 
     def initialize_button_section(self):
         # delete button
-        self.delete_button = QtGui.QPushButton('Delete tags in selected time')
+        self.delete_button = QtWidgets.QPushButton('Delete tags in selected time')
         self.delete_button.clicked.connect(self.delete_events)
         self.dock2.addWidget(self.delete_button, 0, 0)
 
@@ -105,7 +105,7 @@ class AwQtManual(QtGui.QMainWindow):
         self.date_edit.dateChanged.connect(self.change_date)
         self.dock2.addWidget(self.date_edit, 1, 0)
 
-        self.data_selector = QtGui.QComboBox()
+        self.data_selector = QtWidgets.QComboBox()
         self.data_selector.addItem('sum by: afk')  # afk_data
         self.data_selector.addItem('sum by: app')  # ww_data
         self.data_selector.addItem('sum by: tag')  # manual_data
@@ -114,15 +114,15 @@ class AwQtManual(QtGui.QMainWindow):
         self.data_selector.currentIndexChanged.connect(self.update_datatable)
 
         # tag text area
-        horizontal = QtGui.QHBoxLayout()
-        label = QtGui.QLabel("Tag:")
-        self.tag = QtGui.QLineEdit('')
+        horizontal = QtWidgets.QHBoxLayout()
+        label = QtWidgets.QLabel("Tag:")
+        self.tag = QtWidgets.QLineEdit('')
         horizontal.addWidget(label)
         horizontal.addWidget(self.tag)
         self.dock2.layout.addLayout(horizontal, 3, 0)
 
         # overlap option
-        self.overlap_option = QtGui.QComboBox()
+        self.overlap_option = QtWidgets.QComboBox()
         self.overlap_option.addItem('overwrite')  # afk_data
         self.overlap_option.addItem('underwrite')  # ww_data
         self.overlap_option.addItem('raise')  # manual_data
@@ -131,12 +131,12 @@ class AwQtManual(QtGui.QMainWindow):
         self.overlap_sel_change(1)
 
         # exclude afk checkbox
-        self.exclude_afk_checkbox = QtGui.QCheckBox("Exclude afk from tag?")
+        self.exclude_afk_checkbox = QtWidgets.QCheckBox("Exclude afk from tag?")
         self.exclude_afk_checkbox.setChecked(False)
         self.dock2.addWidget(self.exclude_afk_checkbox, 5, 0)
 
         # tag button
-        self.tag_button = QtGui.QPushButton('Tag selected Time')
+        self.tag_button = QtWidgets.QPushButton('Tag selected Time')
         self.tag_button.clicked.connect(self.tag_time)
         self.dock2.addWidget(self.tag_button, 6, 0)
 
@@ -178,12 +178,12 @@ class AwQtManual(QtGui.QMainWindow):
         self.legend_font.setBold(True)
         for lgroup in ['afk_data', 'manual_data']:
             litems = self.legend[lgroup]
-            over_label = QtGui.QLabel(lgroup, self)
+            over_label = QtWidgets.QLabel(lgroup, self)
             over_label.setFont(self.legend_font)
             self.dock4.addWidget(over_label)
             self.legend_widgets.append(over_label)
             for k, c in litems.items():
-                leg_lab = QtGui.QLabel(k, self)
+                leg_lab = QtWidgets.QLabel(k, self)
                 leg_lab.setFont(self.legend_font)
                 use_c = c if isinstance(c, str) else c.name()
                 # setting up background color and border
@@ -193,12 +193,12 @@ class AwQtManual(QtGui.QMainWindow):
 
         for lgroup in ['ww_data']:
             litems = self.legend[lgroup]
-            over_label = QtGui.QLabel(lgroup, self)
+            over_label = QtWidgets.QLabel(lgroup, self)
             over_label.setFont(self.legend_font)
             self.dock5.addWidget(over_label)
             self.legend_widgets.append(over_label)
             for k, c in litems.items():
-                leg_lab = QtGui.QLabel(k, self)
+                leg_lab = QtWidgets.QLabel(k, self)
                 leg_lab.setFont(self.legend_font)
                 use_c = c if isinstance(c, str) else c.name()
                 # setting up background color and border
@@ -248,7 +248,7 @@ class AwQtManual(QtGui.QMainWindow):
         dataset_name = self.data_mapper[j]
         data = self.data[dataset_name]
         if data is not None:
-            df = data.groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
+            df = data[[self.sum_col[j],'duration_min']].groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
             df.loc['total'] = df.sum()
             if dataset_name == 'manual_data' and len(self.exclude_tags) > 0:
                 exclude_time = df.loc[df.index[np.in1d(df.index, self.exclude_tags)]].sum()

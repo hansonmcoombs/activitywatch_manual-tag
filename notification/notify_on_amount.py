@@ -158,10 +158,10 @@ def desktop_notification(title, text):
 # todo the play vs not play is based on the environment... need to understand... see /home/matt_dumont/aw_qt_notify/notify_overwork.env
 if __name__ == '__main__':
     # the two below are for quick debugging without command line access
-    # param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
-    # notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
-    param_file = sys.argv[1]
-    notified_file = sys.argv[2]
+    param_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_params.txt'
+    notified_file = '/home/matt_dumont/aw_qt_notify/notify_overwork_run.txt'
+    # param_file = sys.argv[1]
+    # notified_file = sys.argv[2]
     print(f'inputs: {param_file=} {notified_file=}')
     print(sys.path)
 

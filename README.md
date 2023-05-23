@@ -31,17 +31,20 @@ There are three possible ways to handle manual tag overlaps. They are:
 
 ## installation
 
+Tested on Xubuntu 22.04, python 3.10 for other versions of python and linux YMMV
+
 * ensure ActivityWatch is installed and active
     * download the latest release: https://activitywatch.net/
     * mkdir ~/activitywatch
     * unzip: unzip {file.zip} -d ~/activitywatch
     * add ~/activitywatch/aw-qt to autostart
     * for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
+* sudo apt install libxcb-cursor0B # missing this dependency caused all sorts of issues
 * clone this repo no need to add root to pythonpath
   * git clone git@github.com:hansonmcoombs/activitywatch_manual-tag.git ~/activitywatch_manual-tag
 * install the requisite python environment, see
   * conda env create --file ~/activitywatch_manual-tag/env.yml
-  * env.txt --> for a loose list of packages
+  * python_env.txt --> for a loose list of packages
   * env.yml --> for a specified conda environment
 * run .../launch_aw-tag.py to launch using the aforementioned environment
 * add menu item
@@ -94,3 +97,6 @@ the functions count the number of texts sent.
 1. Thank you to the ActivityWatch team for implementing for their hard work
 2. Sorry for the rough as guts nature of this gui... It was the best I could do with my skill set and availability.
 3. If anyone wants to improve this, by all means feel free.
+
+# Debugging notes for Matt
+* export QT_DEBUG_PLUGINS=1 # to debug plugins 

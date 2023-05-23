@@ -379,7 +379,7 @@ def get_afk_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df = pd.json_normalize(events)
     if df.empty:
         return None
-    df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True)
+    df["start"] = pd.to_datetime(df["timestamp"], format='mixed')
     df["stop"] = df.loc[:, 'start'] + df.loc[:, 'duration']
     df.set_index("id", inplace=True)
 
@@ -451,7 +451,7 @@ def get_window_watcher_data(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df = pd.json_normalize(events)
     if df.empty:
         return None
-    df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True)
+    df["start"] = pd.to_datetime(df["timestamp"], format='mixed')
     df["stop"] = df.loc[:, 'start'] + df.loc[:, 'duration']
     df.set_index("id", inplace=True)
 
