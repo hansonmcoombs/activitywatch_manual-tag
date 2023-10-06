@@ -84,8 +84,10 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
             for astart, astop in not_afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
                 astart = astart.round('T')
                 astop = astop.round('T')
-                all_data.loc[astart:astop, 'afk'] = True
-            all_data.loc[all_data.afk, 'make'] = False
+                all_data.loc[astart:astop, 'afk'] = False
+            else:
+                warnings.warn('no afk data found, not excluding afk time')
+        all_data.loc[all_data.afk, 'make'] = False
 
     if manual_data is not None:
         for mid, mstart, mstop, t in manual_data.loc[:, ['start', 'stop', 'tag']].itertuples(True, None):
@@ -366,20 +368,6 @@ def _test_create_events_from_regular_data():
 
 
 create_manual_bucket()
-
-
-def _examine_dead_time_options():
-    """ this is just a testing scratch pad"""
-    start = datetime.date.today().isoformat()
-    start_tag = (datetime.datetime.fromisoformat(start) + datetime.timedelta(hours=8)).astimezone(datetime.timezone.utc)
-    start = datetime.datetime.fromisoformat(start).astimezone(datetime.timezone.utc)
-    afk_data = get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
-    manual_data = get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
-
-    add_manual_data_v2(start=start_tag, duration=4 * 60 * 60,
-                       tag='test',
-                       afk_data=afk_data, manual_data=manual_data, overlap='overwrite',
-                       exclude_afk_time=True)
 
 
 if __name__ == '__main__':
