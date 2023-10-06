@@ -33,176 +33,6 @@ def delete_manual_data(eid: int, force=False):
     assert t.status_code == 200, t.text
 
 
-def add_manual_data(start: datetime.datetime, duration: float, tag: str, overlap='overwrite',
-                    exclude_afk_time=False):
-    """
-
-    :param start: datetime object utc.
-    :param duration: seconds
-    :param tag: str, tag
-    :param overlap: one of: "overwrite": if the new event overlaps with previous events then all events will
-                                         deleted and replace with new events where the passed (new) event is kept
-                                         completely and the overlapped events (old) are truncated to prevent any overlap
-                                         in the database
-                            "underwrite": if the new event overlaps with previous events it will be truncated to prevent
-                                          any overlapping data. the previous events will not be impacted.
-                            "raise": raises an exception to prevent saving overlapping data.
-    :param exclude_afk_time: bool if True only add the tag to time that is not afk
-    :return:
-    """
-    raise NotImplementedError('depreciated, use add_manual_data_v2')
-    if exclude_afk_time:
-        raise NotImplementedError
-    stop = start + datetime.timedelta(seconds=duration)
-    assert overlap in ["overwrite", "underwrite", "raise", 'delete']
-    events = []
-    delete_events = []
-    manual_data = get_manual(fromdatetime=(start - datetime.timedelta(hours=24)).isoformat(),
-                             todatetime=(start + datetime.timedelta(hours=24)).isoformat())
-    if manual_data is not None:
-        manual_data.loc[:, 'overlapping'] = False
-        idx = (manual_data.start <= start) & (manual_data.stop >= stop)  # existing in the middle of new
-        manual_data.loc[idx, 'overlapping'] = True
-        idx = (manual_data.stop <= stop) & (manual_data.stop > start)  # left overhanging and middle
-        manual_data.loc[idx, 'overlapping'] = True
-        idx = (manual_data.start >= start) & (manual_data.start <= stop)  # right overhanging middle
-        manual_data.loc[idx, 'overlapping'] = True
-        idx = (manual_data.start <= start) & (manual_data.stop >= stop)  # new in middle of existing
-        manual_data.loc[idx, 'overlapping'] = True
-
-        overlaps = manual_data.loc[manual_data.loc[:, 'overlapping']]
-
-        if len(overlaps) > 0:
-            if overlap == 'delete':
-                delete_events.extend(overlaps.index)
-            elif overlap in ["overwrite"]:
-                # add main event
-                temp = Event(timestamp=start, duration=duration,
-                             data=dict(tag=tag))
-                events.append(temp)
-
-                # previous events that are fully inside the new time period
-                idx = (overlaps.start > start) & (overlaps.stop < stop)
-                delete_events.extend(overlaps.index[idx])
-
-                # previous events, whose starts are in the time period, move start to 1s after stop
-                idx = (overlaps.start >= start) & (overlaps.stop > stop)
-                delete_events.extend(overlaps.index[idx])
-                for r, t in overlaps.loc[idx].iterrows():
-                    use_start = stop + datetime.timedelta(seconds=1)
-                    use_duration = (t.loc['stop'] - use_start).total_seconds()
-                    assert use_duration > 0
-                    use_tag = t.loc['tag']
-                    temp = Event(timestamp=use_start, duration=use_duration,
-                                 data=dict(tag=use_tag))
-                    events.append(temp)
-
-                # previous events whose stops are in the time period, change duration to 1s before start
-                idx = (overlaps.stop >= start) & (overlaps.start < start)
-                delete_events.extend(overlaps.index[idx])
-                for r, t in overlaps.loc[idx].iterrows():
-                    use_tag = t.loc['tag']
-                    use_start = t.loc['start']
-                    use_duration = t.loc['duration'].total_seconds() - (t.loc['stop'] - start).total_seconds()
-                    assert use_duration > 0
-                    temp = Event(timestamp=use_start, duration=use_duration,
-                                 data=dict(tag=use_tag))
-                    events.append(temp)
-
-                idx = (overlaps.stop >= stop) & (overlaps.start < start)  # piece in middle
-                for r, t in overlaps.loc[idx].iterrows():
-                    use_tag = t.loc['tag']
-                    use_start = stop
-                    use_duration = (t.loc['stop'] - use_start).total_seconds()
-                    assert use_duration > 0, f'{use_tag}, {use_start}, {use_duration}'
-                    temp = Event(timestamp=use_start, duration=use_duration,
-                                 data=dict(tag=use_tag))
-                    events.append(temp)
-
-            elif overlap in ["underwrite"]:
-                start_ts = start.timestamp()
-                stop_ts = start_ts + duration
-                overlaps = overlaps.sort_values('start_unix')
-                overlaps.loc[:, 'next_start'] = overlaps.loc[:, 'start_unix'].shift(-1)
-                overlaps.loc[:, 'next_stop'] = overlaps.loc[:, 'stop_unix'].shift(-1)
-                overlaps.loc[:, 'prev_start'] = overlaps.loc[:, 'start_unix'].shift(1)
-                overlaps.loc[:, 'prev_stop'] = overlaps.loc[:, 'stop_unix'].shift(1)
-                use_vals = [
-                    'prev_start', 'prev_stop',
-                    'start_unix', 'stop_unix',
-                    'next_start', 'next_stop',
-                ]
-                use_starts = []
-                use_stops = []
-                for vals in overlaps.loc[:, use_vals].itertuples(False, None):
-                    prev_start, prev_stop, start_lap, stop_lap, next_start, next_stop = vals
-
-                    if pd.isnull(prev_start):  # first one
-                        if start_ts <= start_lap:  # first is left overhanging
-                            use_start = start_ts
-                            use_stop = start_lap
-                            use_starts.append(use_start)
-                            use_stops.append(use_stop)
-                        elif start_lap < start_ts and stop_ts < stop_lap:
-                            pass
-
-                        elif start_ts <= stop_lap:  # first is right overhanging, only one value by default
-                            if pd.isnull(next_start):
-                                use_start = stop_lap
-                                use_stop = stop_ts
-                                use_starts.append(use_start)
-                                use_stops.append(use_stop)
-                        else:  # first is middle value
-                            raise ValueError('shouldnt be able to get here')
-
-                    elif pd.isnull(next_start):  # last one
-                        use_start = prev_stop
-                        use_stop = start_lap
-                        use_starts.append(use_start)
-                        use_stops.append(use_stop)
-
-                        if not stop_ts <= stop_lap:  # not right overhanging, must add another overlap
-                            use_start = stop_lap
-                            use_stop = stop_ts
-                            use_starts.append(use_start)
-                            use_stops.append(use_stop)
-
-                    else:  # middle values
-                        use_start = prev_stop
-                        use_stop = start_lap
-                        use_starts.append(use_start)
-                        use_stops.append(use_stop)
-
-                for st, sp in zip(use_starts, use_stops):
-                    use_duration = sp - st
-                    assert use_duration > 0, f'{st}, {sp}, {use_duration}'
-                    temp = Event(timestamp=datetime.datetime.fromtimestamp(st, datetime.timezone.utc),
-                                 duration=use_duration,
-                                 data=dict(tag=tag))
-                    events.append(temp)
-            elif overlap == "raise":
-                raise ValueError('stopped to prevent overlapping events')
-            else:
-                raise ValueError("should not get here")
-        elif overlap == 'delete':
-            pass
-        else:
-            temp = Event(timestamp=start, duration=duration,
-                         data=dict(tag=tag))
-            events.append(temp)
-    else:
-        if overlap != 'delete':
-            temp = Event(timestamp=start, duration=duration,
-                         data=dict(tag=tag))
-            events.append(temp)
-
-    with ActivityWatchClient() as aw:
-        for event in events:
-            aw.insert_event(manual_bucket_id, event=event)
-    for idv in pd.unique(delete_events):
-        delete_manual_data(idv)
-
-
 def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
                        afk_data, manual_data, overlap='overwrite',
                        exclude_afk_time=False):
@@ -239,7 +69,7 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
                             freq='T'),
         columns=['afk', 'prev_manual_id', 'make', 'new_tag', 'prev_tag']
     )
-    all_data.loc[:, 'afk'] = False
+    all_data.loc[:, 'afk'] = True
     all_data.loc[:, 'prev_manual_id'] = None
     all_data.loc[:, 'make'] = False
     all_data.loc[:, 'new_tag'] = None
@@ -250,11 +80,12 @@ def add_manual_data_v2(start: datetime.datetime, duration: float, tag: str,
 
     if exclude_afk_time:
         if afk_data is not None:
-            afk_data = afk_data.loc[afk_data.status == 'afk']
-            for astart, astop in afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
+            not_afk_data = afk_data.loc[afk_data.status != 'afk']
+            for astart, astop in not_afk_data.loc[:, ['start', 'stop']].itertuples(False, None):
                 astart = astart.round('T')
                 astop = astop.round('T')
-                all_data.loc[astart:astop, 'make'] = False
+                all_data.loc[astart:astop, 'afk'] = True
+            all_data.loc[all_data.afk, 'make'] = False
 
     if manual_data is not None:
         for mid, mstart, mstop, t in manual_data.loc[:, ['start', 'stop', 'tag']].itertuples(True, None):
@@ -535,6 +366,21 @@ def _test_create_events_from_regular_data():
 
 
 create_manual_bucket()
+
+
+def _examine_dead_time_options():
+    """ this is just a testing scratch pad"""
+    start = datetime.date.today().isoformat()
+    start_tag = (datetime.datetime.fromisoformat(start) + datetime.timedelta(hours=8)).astimezone(datetime.timezone.utc)
+    start = datetime.datetime.fromisoformat(start).astimezone(datetime.timezone.utc)
+    afk_data = get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+    manual_data = get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+
+    add_manual_data_v2(start=start_tag, duration=4 * 60 * 60,
+                       tag='test',
+                       afk_data=afk_data, manual_data=manual_data, overlap='overwrite',
+                       exclude_afk_time=True)
+
 
 if __name__ == '__main__':
     _test_create_events_from_regular_data()
