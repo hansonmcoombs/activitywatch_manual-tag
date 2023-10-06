@@ -2,6 +2,7 @@
 created matt_dumont 
 on: 6/02/22
 """
+from path_support import exclude_tag_path, gui_state_path
 import datetime
 import pandas as pd
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
@@ -25,9 +26,33 @@ class AwQtManual(QtWidgets.QMainWindow):
         'sum by: tag': 'tag',
     }
 
-    def __init__(self, start_day: str, exclude_tags=tuple()):
+    dup_actions = ('overwrite', 'underwrite', 'raise')
+    sum_options = ('sum by: afk', 'sum by: app', 'sum by: tag')
+
+    def __init__(self, start_day: str, exclude_tags=tuple(), gui_state=None):
+        if gui_state is None:
+            gui_state = {
+                'sum_by': 'sum by: afk',
+                'overlap_mode': 'overwrite',
+                'ex_afk': False,
+
+            }
+        else:
+            assert isinstance(gui_state, dict)
+            assert set(gui_state.keys()) == {'sum_by', 'overlap_mode', 'ex_afk'}
+
         QtWidgets.QMainWindow.__init__(self)
-        self.exclude_afk_time = False
+        ex_afk = gui_state['ex_afk']
+        overlap = gui_state['overlap_mode']
+        assert overlap in self.dup_actions, f'overlap mode "{overlap}" not in {self.dup_actions}'
+        self.overlap = overlap
+
+        sumby = gui_state['sum_by']
+        assert sumby in self.sum_options
+        self.sum_by = sumby
+
+        assert isinstance(ex_afk, bool)
+        self.exclude_afk_time = ex_afk
         self.exclude_tags = tuple(exclude_tags)
         self.bar_plots = []  # to keep track of the barplots that need to be removed
         self.resize(1900, 900)
@@ -106,9 +131,10 @@ class AwQtManual(QtWidgets.QMainWindow):
         self.dock2.addWidget(self.date_edit, 1, 0)
 
         self.data_selector = QtWidgets.QComboBox()
-        self.data_selector.addItem('sum by: afk')  # afk_data
-        self.data_selector.addItem('sum by: app')  # ww_data
-        self.data_selector.addItem('sum by: tag')  # manual_data
+        for i, o in enumerate(self.sum_options):
+            self.data_selector.addItem(o)
+            if o == self.sum_by:
+                self.data_selector.setCurrentIndex(i)
         self.dock2.addWidget(self.data_selector, 2, 0)
         self.update_datatable(1)
         self.data_selector.currentIndexChanged.connect(self.update_datatable)
@@ -123,16 +149,18 @@ class AwQtManual(QtWidgets.QMainWindow):
 
         # overlap option
         self.overlap_option = QtWidgets.QComboBox()
-        self.overlap_option.addItem('overwrite')  # afk_data
-        self.overlap_option.addItem('underwrite')  # ww_data
-        self.overlap_option.addItem('raise')  # manual_data
+        for i, o in enumerate(self.dup_actions):
+            self.overlap_option.addItem(o)
+            if o == self.overlap:
+                self.overlap_option.setCurrentIndex(i)
         self.dock2.addWidget(self.overlap_option, 4, 0)
         self.overlap_option.currentIndexChanged.connect(self.overlap_sel_change)
         self.overlap_sel_change(1)
 
         # exclude afk checkbox
         self.exclude_afk_checkbox = QtWidgets.QCheckBox("Exclude afk from tag?")
-        self.exclude_afk_checkbox.setChecked(False)
+        self.exclude_afk_checkbox.setChecked(self.exclude_afk_time)
+        self.exclude_afk_checkbox.stateChanged.connect(self.update_ex_afk)
         self.dock2.addWidget(self.exclude_afk_checkbox, 5, 0)
 
         # tag button
@@ -150,7 +178,7 @@ class AwQtManual(QtWidgets.QMainWindow):
         add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
                            duration=high - low, tag=self.tag.text().replace('Tag:', ''),
                            overlap=self.overlap,
-                           exclude_afk_time=self.exclude_afk_checkbox.isChecked(),
+                           exclude_afk_time=self.exclude_afk_time,
                            afk_data=self.data['afk_data'], manual_data=self.data['manual_data'])
         self.update_plot_data()
         self.update_datatable(1)
@@ -228,6 +256,7 @@ class AwQtManual(QtWidgets.QMainWindow):
 
     def overlap_sel_change(self, i):
         self.overlap = self.overlap_option.currentText()
+        self._write_gui_state()
 
     def update_legend(self):
         self.delete_legend()
@@ -243,12 +272,16 @@ class AwQtManual(QtWidgets.QMainWindow):
         self.update_datatable(1)
         self.update_legend()
 
+    def update_ex_afk(self, i):
+        self.exclude_afk_time = self.exclude_afk_checkbox.isChecked()
+        self._write_gui_state()
     def update_datatable(self, i):
-        j = self.data_selector.currentText()
-        dataset_name = self.data_mapper[j]
+        self.sum_by = self.data_selector.currentText()
+        dataset_name = self.data_mapper[self.sum_by]
         data = self.data[dataset_name]
         if data is not None:
-            df = data[[self.sum_col[j],'duration_min']].groupby(self.sum_col[j]).sum().loc[:, ['duration_min']]
+            df = data[[self.sum_col[self.sum_by],
+                       'duration_min']].groupby(self.sum_col[self.sum_by]).sum().loc[:, ['duration_min']]
             df.loc['total'] = df.sum()
             if dataset_name == 'manual_data' and len(self.exclude_tags) > 0:
                 exclude_time = df.loc[df.index[np.in1d(df.index, self.exclude_tags)]].sum()
@@ -264,9 +297,10 @@ class AwQtManual(QtWidgets.QMainWindow):
             self.show_data = temp
         else:
             data = pd.DataFrame(columns=['duration min'])
-            data.index.name = self.sum_col[j]
+            data.index.name = self.sum_col[self.sum_by]
             self.show_data = data.to_records()
         self.datatable.setData(self.show_data)
+        self._write_gui_state()
 
     def mouseMoved(self, evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
@@ -358,17 +392,39 @@ class AwQtManual(QtWidgets.QMainWindow):
 
         return data
 
+    def _write_gui_state(self):
+        gui_state = {}
+        gui_state['overlap_mode'] = self.overlap
+        gui_state['sum_by'] = self.sum_by
+        gui_state['ex_afk'] = self.exclude_afk_time
+
+        with open(gui_state_path, 'w') as f:
+            for k,val in gui_state.items():
+                f.write(f'{k}={val}\n')
+def read_gui_state():
+    with open(gui_state_path, 'r') as f:
+        lines = f.readlines()
+    gui_state = {}
+    for line in lines:
+        key, val = line.split('=')
+        gui_state[key] = val.strip()
+    gui_state['ex_afk'] = gui_state['ex_afk'] == 'True'
+    return gui_state
+
+
 
 def main():
-    from pathlib import Path
-    try:
-        (limit, limit_txt, text_num, message, countdown_start, notifications_start,
-         notifications_stop, start_hr, inc_tagtime, exclude_tags, key) = read_param_file(
-            Path.home().joinpath('aw_qt_notify/notify_overwork_params.txt'))
-    except Exception:
+    if exclude_tag_path.exists():
+        with open(exclude_tag_path, 'r') as f:
+            exclude_tags = [e.strip() for e in f.readlines()]
+    else:
         exclude_tags = []
-        pass
+
+    if gui_state_path.exists():
+        gui_state = read_gui_state()
+    else:
+        gui_state = None
     app = pg.mkQApp()
-    loader = AwQtManual(datetime.date.today().isoformat(), exclude_tags=exclude_tags)
+    loader = AwQtManual(datetime.date.today().isoformat(), exclude_tags=exclude_tags, gui_state=gui_state)
     proxy = pg.SignalProxy(loader.data_plot.scene().sigMouseMoved, rateLimit=60, slot=loader.mouseMoved)
     pg.exec()

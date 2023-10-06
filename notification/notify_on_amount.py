@@ -18,7 +18,7 @@ today = datetime.date.today()
 now = datetime.datetime.now()
 
 
-def read_param_file(param_file):
+def read_param_file(param_file):  # todo move to reading exclude tags
     with open(param_file, 'r') as f:
         lines = f.readlines()
         lines = [l for l in lines if l[0] != '#']
