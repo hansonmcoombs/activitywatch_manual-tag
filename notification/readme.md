@@ -14,7 +14,7 @@ sudo cp /home/matt_dumont/activitywatch_manual-tag/notification/notify_overwork.
 
 
 
-# todo additoinal stuff needed for pystray
+# todo additoinal stuff needed for pystray menus not working...
 sudo apt install libcairo2-dev pkg-config python3-dev
 
 
