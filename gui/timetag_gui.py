@@ -2,14 +2,13 @@
 created matt_dumont 
 on: 6/02/22
 """
-from path_support import exclude_tag_path, gui_state_path
+import sys
+from path_support import gui_state_path
 import datetime
 import pandas as pd
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
-import numpy as np
 from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix, \
     get_total_untagged_not_afk_data, add_manual_data_v2
-from notification.notify_on_amount import read_param_file
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
 
@@ -29,7 +28,7 @@ class AwQtManual(QtWidgets.QMainWindow):
     dup_actions = ('overwrite', 'underwrite', 'raise')
     sum_options = ('sum by: afk', 'sum by: app', 'sum by: tag')
 
-    def __init__(self, start_day: str, exclude_tags=tuple(), gui_state=None):
+    def __init__(self, start_day: str, gui_state=None):
         if gui_state is None:
             gui_state = {
                 'sum_by': 'sum by: afk',
@@ -53,7 +52,6 @@ class AwQtManual(QtWidgets.QMainWindow):
 
         assert isinstance(ex_afk, bool)
         self.exclude_afk_time = ex_afk
-        self.exclude_tags = tuple(exclude_tags)
         self.bar_plots = []  # to keep track of the barplots that need to be removed
         self.resize(1900, 900)
         area = DockArea()
@@ -208,6 +206,7 @@ class AwQtManual(QtWidgets.QMainWindow):
             litems = self.legend[lgroup]
             over_label = QtWidgets.QLabel(lgroup, self)
             over_label.setFont(self.legend_font)
+            over_label.setStyleSheet(f"background-color: black; border: 1px solid black; color: white;")
             self.dock4.addWidget(over_label)
             self.legend_widgets.append(over_label)
             for k, c in litems.items():
@@ -215,7 +214,13 @@ class AwQtManual(QtWidgets.QMainWindow):
                 leg_lab.setFont(self.legend_font)
                 use_c = c if isinstance(c, str) else c.name()
                 # setting up background color and border
-                leg_lab.setStyleSheet(f"background-color: {use_c}; border: 1px solid black;")
+                leg_lab.setStyleSheet(
+                    f"background-color: {use_c}; "
+                    f"border: 1px solid black; "
+                    f"styleColor: black; "
+                    f"color: white; "
+                    "Text.style: Outline"
+                )
                 self.dock4.addWidget(leg_lab)
                 self.legend_widgets.append(leg_lab)
 
@@ -223,14 +228,22 @@ class AwQtManual(QtWidgets.QMainWindow):
             litems = self.legend[lgroup]
             over_label = QtWidgets.QLabel(lgroup, self)
             over_label.setFont(self.legend_font)
+            over_label.setStyleSheet(f"background-color: black; border: 1px solid black; color: white;")
             self.dock5.addWidget(over_label)
             self.legend_widgets.append(over_label)
             for k, c in litems.items():
+                if len(k) > 20:
+                    k = k[:17] + '...'
                 leg_lab = QtWidgets.QLabel(k, self)
                 leg_lab.setFont(self.legend_font)
                 use_c = c if isinstance(c, str) else c.name()
                 # setting up background color and border
-                leg_lab.setStyleSheet(f"background-color: {use_c}; border: 1px solid black;")
+                leg_lab.setStyleSheet(f"background-color: {use_c}; "
+                                      f"border: 1px solid black; "
+                                      f"styleColor: black; "
+                                      f"color: white; "
+                                      "Text.style: Outline"
+                                      )
                 self.dock5.addWidget(leg_lab)
                 self.legend_widgets.append(leg_lab)
 
@@ -275,6 +288,7 @@ class AwQtManual(QtWidgets.QMainWindow):
     def update_ex_afk(self, i):
         self.exclude_afk_time = self.exclude_afk_checkbox.isChecked()
         self._write_gui_state()
+
     def update_datatable(self, i):
         self.sum_by = self.data_selector.currentText()
         dataset_name = self.data_mapper[self.sum_by]
@@ -283,8 +297,9 @@ class AwQtManual(QtWidgets.QMainWindow):
             df = data[[self.sum_col[self.sum_by],
                        'duration_min']].groupby(self.sum_col[self.sum_by]).sum().loc[:, ['duration_min']]
             df.loc['total'] = df.sum()
-            if dataset_name == 'manual_data' and len(self.exclude_tags) > 0:
-                exclude_time = df.loc[df.index[np.in1d(df.index, self.exclude_tags)]].sum()
+            if dataset_name == 'manual_data':
+
+                exclude_time = df.loc[df.index.str.contains('#')].sum()
                 untagged_notafk = get_total_untagged_not_afk_data(self.data['afk_data'], self.data['manual_data']) / 60
                 df.loc['exclude tags'] = exclude_time
                 df.loc['untag(~afk)'] = untagged_notafk
@@ -338,7 +353,7 @@ class AwQtManual(QtWidgets.QMainWindow):
         legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'app'])
-            cm = pg.colormap.get('gist_earth', 'matplotlib')
+            cm = pg.colormap.get('brg', 'matplotlib')
             n_scens = len(apps) + 1
             colors = [cm[(e + 1) / n_scens] for e in range(n_scens)]
             for k, c in zip(apps, colors):
@@ -399,8 +414,10 @@ class AwQtManual(QtWidgets.QMainWindow):
         gui_state['ex_afk'] = self.exclude_afk_time
 
         with open(gui_state_path, 'w') as f:
-            for k,val in gui_state.items():
+            for k, val in gui_state.items():
                 f.write(f'{k}={val}\n')
+
+
 def read_gui_state():
     with open(gui_state_path, 'r') as f:
         lines = f.readlines()
@@ -412,19 +429,13 @@ def read_gui_state():
     return gui_state
 
 
-
-def main():
-    if exclude_tag_path.exists():
-        with open(exclude_tag_path, 'r') as f:
-            exclude_tags = [e.strip() for e in f.readlines()]
-    else:
-        exclude_tags = []
-
+def launce_timetag():
     if gui_state_path.exists():
         gui_state = read_gui_state()
     else:
         gui_state = None
     app = pg.mkQApp()
-    loader = AwQtManual(datetime.date.today().isoformat(), exclude_tags=exclude_tags, gui_state=gui_state)
+    loader = AwQtManual(datetime.date.today().isoformat(), gui_state=gui_state)
     proxy = pg.SignalProxy(loader.data_plot.scene().sigMouseMoved, rateLimit=60, slot=loader.mouseMoved)
     pg.exec()
+    sys.exit(app.exec_())

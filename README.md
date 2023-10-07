@@ -64,7 +64,7 @@ the texting uses https://textbelt.com and assumes that you only will send 1 mess
 from your IP address, which is free.  It will only send 1 text per day once you reach your limit.
 
 you can specify whether tagged time is included in you total worked time, and you can 
-exclude a set of tags (such as *"personal"*) from your worked time.
+exclude tags by including a # in the tag (such as *"#personal"*) from your worked time.
 
 
 ## parameter and notified file
@@ -79,7 +79,6 @@ exclude a set of tags (such as *"personal"*) from your worked time.
     * The stop time (local time) for notifications... it should only notify when not-afk, but it doesn't always work
     * The start of your day (local time)
     * The whether to count tags as worked time
-    * which tags to exclude from the count of work time
 * you must also pass a notified file path, but it does not need to exist.  This is where
 the functions count the number of texts sent.
 

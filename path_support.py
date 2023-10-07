@@ -1,10 +1,13 @@
 """
 created matt_dumont 
 on: 7/10/23
-"""  # todo propogate though project
+"""
 from pathlib import Path
+notify_icon_path = Path(__file__).parent.joinpath('notification/kea.png')
+sound_path = Path(__file__).parent.joinpath('notification/Kea.mp3')
+
+# parameter files (in .gitignore)
 aq_notify_param_path = Path(__file__).parent.joinpath('.notify_overwork_params')
-exclude_tag_path = Path(__file__).parent.joinpath('.exclude_tags')
 gui_state_path = Path(__file__).parent.joinpath('.gui_state')
-# todo write a base exclude tags file
-# todo write a base notify overwork params file
+notified_file = Path(__file__).parent.joinpath('.notified')
+pause_path = Path(__file__).parent.joinpath('.notify_pause')

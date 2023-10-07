@@ -1,7 +1,8 @@
 # param files
 .gui_state
-.exclude_tags
 .notify_overwork_params
+.notify_pause
+.notified
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
