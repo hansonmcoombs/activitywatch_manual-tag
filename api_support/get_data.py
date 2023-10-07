@@ -168,7 +168,7 @@ def get_manual(fromdatetime: str, todatetime: str) -> pd.DataFrame:
     df = pd.json_normalize(events)
     if df.empty:
         return None
-    df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True)
+    df["start"] = pd.to_datetime(df["timestamp"], infer_datetime_format=True) # todo update this to deal with the warning infer_datetime_format' is deprecated
     df["stop"] = df.loc[:, 'start'] + df.loc[:, 'duration']
     df.set_index("id", inplace=True)
 

@@ -39,11 +39,12 @@ class AwqtTagNotify():
                                  menu=self.menu)
 
     # todo make this actually run the notifications....
+    # todo see: https://www.reddit.com/r/learnpython/comments/a7utd7/pystray_python_system_tray_icon_app/
     def _make_menu(self):
         self.menu_items = {}
 
         # launch aw_qt_tag
-        t = pystray.MenuItem('Launch TimeTag', self._launch_timetag(), checked=None)
+        t = pystray.MenuItem('Launch TimeTag', self._launch_timetag, checked=None)
         self.menu_items['launch_timetag'] = t
 
         # notifying
@@ -55,6 +56,9 @@ class AwqtTagNotify():
         # set notify params
         t = pystray.MenuItem('Set Notify Params', self._launch_notify_params, checked=None)
         self.menu_items['set_notify_params'] = t
+
+
+        # todo could make a test mode menu (to test overwork notifications, etc.)
 
         # quit
         t = pystray.MenuItem('Quit', self.quit, checked=None)
