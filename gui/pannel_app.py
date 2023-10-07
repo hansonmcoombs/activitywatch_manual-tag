@@ -12,9 +12,6 @@ from PIL import Image
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
 from path_support import pause_path, notify_icon_path
-from gui.timetag_gui import launce_timetag
-from gui.set_notify_overwork_params_gui import launch_notify_params
-from gui.custom_pause_gui import launch_custom_pause
 import subprocess
 
 
@@ -46,7 +43,7 @@ class AwqtTagNotify():
         self.menu_items = {}
 
         # launch aw_qt_tag
-        t = pystray.MenuItem('Launch TimeTag', launce_timetag, checked=None)
+        t = pystray.MenuItem('Launch TimeTag', self._launch_timetag(), checked=None)
         self.menu_items['launch_timetag'] = t
 
         # notifying
