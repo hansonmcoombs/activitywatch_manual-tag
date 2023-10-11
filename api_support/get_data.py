@@ -366,8 +366,11 @@ def _test_create_events_from_regular_data():
         correct.append((e.timestamp == s) and (e.duration.total_seconds() == d * 60))
     assert all(correct)
 
-
 create_manual_bucket()
+# todo it seems like aw-qt is re-launching... and causing conflict
+#  /home/matt_dumont/miniconda3/envs/aw_qt_pystray/lib/python3.9/site-packages/aw_client/singleinstance.py:35
+#  I may need to launch AW-QT from the pystray app and then pass it though... something to consider
+print('got here')
 
 
 if __name__ == '__main__':

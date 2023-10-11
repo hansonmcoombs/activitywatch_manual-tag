@@ -49,14 +49,6 @@ def calc_worked_time(start_time, stop_time):
 def notify_on_amount():
     today = datetime.date.today()
     now = datetime.datetime.now()
-    if pause_path.exists():
-        with open(pause_path, 'r') as f:
-            pause_time = datetime.datetime.fromisoformat(f.readline())
-        if now < pause_time:
-            print('paused')
-            return
-        else:
-            pause_path.unlink()
 
     params = read_param_file(aq_notify_param_path)
     limit = params['limit']

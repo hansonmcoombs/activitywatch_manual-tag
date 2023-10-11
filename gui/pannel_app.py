@@ -8,15 +8,13 @@ import sys
 from pathlib import Path
 import datetime
 from PIL import Image
-from notification.notify_on_amount import desktop_notification
 
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
-from path_support import pause_path, notify_icon_path
+from notification.notify_on_amount import desktop_notification, notify_on_amount
+from path_support import pause_path, notify_icon_path, tray_app_state_path, freq_path
 import subprocess
 
-
-# todo need to make notification frequency
 
 class AwqtTagNotify():
     menu_keys = (
@@ -24,6 +22,7 @@ class AwqtTagNotify():
         'notifying',
         'pause_notifications',
         'set_notify_params',
+        'set_note_freq',
         'test_notification',
         'quit',
     )
@@ -34,9 +33,17 @@ class AwqtTagNotify():
 
         :param test_mode: bool if True include test notification menu item # todo document
         """
-        # todo read/save state data to txt file
+        pause_path.unlink(missing_ok=True)  # reset any pauses on restart
+        if tray_app_state_path.exists():
+            with open(tray_app_state_path, 'r') as f:
+                self.notifying = f.readline().strip() == 'True'
+                self.note_frequency = int(f.readline().strip())
+
+        else:
+            self.notifying = True
+            self.note_frequency = 10
+
         self.test_mode = test_mode
-        self.notifying = True
         self._pause_10 = False
         self._pause_30 = False
         self._pause_60 = False
@@ -65,6 +72,10 @@ class AwqtTagNotify():
         t = pystray.MenuItem('Set Notify Params', self._launch_notify_params, checked=None)
         self.menu_items['set_notify_params'] = t
 
+        # set note frequency
+        t = pystray.MenuItem('Set Note Frequency', self._launch_set_note_frequency, checked=None)
+        self.menu_items['set_note_freq'] = t
+
         # test notification option
         t = pystray.MenuItem('Test Notification', _test_notification, checked=None, visible=self.test_mode)
         self.menu_items['test_notification'] = t
@@ -82,8 +93,7 @@ class AwqtTagNotify():
         pause_items.append(t)
         self.menu_items['pause_10'] = t
 
-        t = pystray.MenuItem('Pause 30 min', self.set_pause_30,
-                             checked=self.is_checked)  # todo make sure these are unchecked when pause is over
+        t = pystray.MenuItem('Pause 30 min', self.set_pause_30, checked=self.is_checked)
         pause_items.append(t)
         self.menu_items['pause_30'] = t
 
@@ -164,7 +174,10 @@ class AwqtTagNotify():
     def _make_icon(self):
         return Image.open(notify_icon_path)
 
-    def quit(self):  # todo write out state data
+    def quit(self):
+        with open(tray_app_state_path, 'w') as f:
+            f.write(str(self.notifying) + '\n')
+            f.write(str(self.note_frequency) + '\n')
         self.icon.stop()
 
     def run(self):
@@ -188,8 +201,41 @@ class AwqtTagNotify():
             str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_custom_pause.py'))
         ])
 
+    def _launch_set_note_frequency(self):
+        subprocess.run([
+            sys.executable,
+            str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_set_note_freq.py'))
+        ])
+        if freq_path.exists():
+            with open(freq_path, 'r') as f:
+                self.note_frequency = int(f.readline().strip())
+            freq_path.unlink()
+
+    def notification(self):
+        run_notification = True
+        # check for pause
+        if pause_path.exists():
+            with open(pause_path, 'r') as f:
+                pause_time = datetime.datetime.fromisoformat(f.readline())
+            if datetime.datetime.now() < pause_time:
+                run_notification = False
+            else:
+                pause_path.unlink()
+                # unchecked all pause items
+                self._pause_notifications = False
+                self._pause_custom = False
+                self._pause_60 = False
+                self._pause_30 = False
+                self._pause_10 = False
+
+        # run notification
+        if run_notification:
+            notify_on_amount()
+
+
 def _test_notification():
-    desktop_notification('test title','test message')
+    desktop_notification('test title', 'test message')
+
 
 if __name__ == '__main__':
     t = AwqtTagNotify(True)

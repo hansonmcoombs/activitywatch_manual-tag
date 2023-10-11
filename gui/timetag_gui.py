@@ -6,12 +6,11 @@ import sys
 from path_support import gui_state_path
 import datetime
 import pandas as pd
-from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
+from PyQt6 import QtGui, QtWidgets, QtCore
 from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix, \
     get_total_untagged_not_afk_data, add_manual_data_v2
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
-
 
 class AwQtManual(QtWidgets.QMainWindow):
     data_mapper = {
@@ -434,8 +433,7 @@ def launce_timetag():
         gui_state = read_gui_state()
     else:
         gui_state = None
-    app = pg.mkQApp()
+    app = QtWidgets.QApplication(sys.argv)
     loader = AwQtManual(datetime.date.today().isoformat(), gui_state=gui_state)
     proxy = pg.SignalProxy(loader.data_plot.scene().sigMouseMoved, rateLimit=60, slot=loader.mouseMoved)
-    pg.exec()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
