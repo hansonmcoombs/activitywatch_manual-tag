@@ -12,7 +12,8 @@ from path_support import aq_notify_param_path, notified_file, sound_path, notify
 import pandas as pd
 from plyer import notification
 from api_support.get_data import get_afk_data, get_manual
-from playsound import playsound
+import os
+import shutil
 
 def calc_worked_time(start_time, stop_time):
     fraction = 5
@@ -131,13 +132,18 @@ def send_message(number, message, key):
 def desktop_notification(title, text):
     print('notification')
     # desktop notification + sound
+    adder=''
+    if shutil.which('mpg123') is None:
+        adder='\ncould not find mpg123, no sound\ninstall with sudo apt-get install mpg123'
     notification.notify(
         # title of the notification,
         title=title,
-        message=text,
-        app_icon=notify_icon_path,
+        message=text+adder,
+        app_icon=str(notify_icon_path),
         timeout=20
     )
-    playsound(sound_path)
+    os.system(f"mpg123 {sound_path}")
 
-# todo the play vs not play is based on the environment... need to understand... see /home/matt_dumont/aw_qt_notify/notify_overwork.env
+
+if __name__ == '__main__':
+    desktop_notification('test', 'test')

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 import datetime
 from PIL import Image
+from notification.notify_on_amount import desktop_notification
 
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
@@ -23,11 +24,18 @@ class AwqtTagNotify():
         'notifying',
         'pause_notifications',
         'set_notify_params',
+        'test_notification',
         'quit',
     )
     menu = None
 
-    def __init__(self):  # todo read/save state data to txt file
+    def __init__(self, test_mode=True):
+        """
+
+        :param test_mode: bool if True include test notification menu item # todo document
+        """
+        # todo read/save state data to txt file
+        self.test_mode = test_mode
         self.notifying = True
         self._pause_10 = False
         self._pause_30 = False
@@ -57,8 +65,9 @@ class AwqtTagNotify():
         t = pystray.MenuItem('Set Notify Params', self._launch_notify_params, checked=None)
         self.menu_items['set_notify_params'] = t
 
-
-        # todo could make a test mode menu (to test overwork notifications, etc.)
+        # test notification option
+        t = pystray.MenuItem('Test Notification', _test_notification, checked=None, visible=self.test_mode)
+        self.menu_items['test_notification'] = t
 
         # quit
         t = pystray.MenuItem('Quit', self.quit, checked=None)
@@ -179,7 +188,9 @@ class AwqtTagNotify():
             str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_custom_pause.py'))
         ])
 
+def _test_notification():
+    desktop_notification('test title','test message')
 
 if __name__ == '__main__':
-    t = AwqtTagNotify()
+    t = AwqtTagNotify(True)
     t.run()
