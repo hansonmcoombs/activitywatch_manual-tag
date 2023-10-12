@@ -7,10 +7,10 @@ from path_support import gui_state_path
 import datetime
 import pandas as pd
 from PyQt6 import QtGui, QtWidgets, QtCore
-from api_support.get_data import get_afk_data, get_window_watcher_data, get_manual, get_labels_from_unix, \
-    get_total_untagged_not_afk_data, add_manual_data_v2
+from api_support.get_data import AwDataAccess
 import pyqtgraph as pg
 from pyqtgraph.dockarea import DockArea, Dock
+
 
 class AwQtManual(QtWidgets.QMainWindow):
     data_mapper = {
@@ -39,6 +39,7 @@ class AwQtManual(QtWidgets.QMainWindow):
             assert isinstance(gui_state, dict)
             assert set(gui_state.keys()) == {'sum_by', 'overlap_mode', 'ex_afk'}
 
+        self.AWD = AwDataAccess('time_tagger')
         QtWidgets.QMainWindow.__init__(self)
         ex_afk = gui_state['ex_afk']
         overlap = gui_state['overlap_mode']
@@ -172,11 +173,11 @@ class AwQtManual(QtWidgets.QMainWindow):
 
     def tag_time(self):
         low, high = self.selection.getRegion()
-        add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
-                           duration=high - low, tag=self.tag.text().replace('Tag:', ''),
-                           overlap=self.overlap,
-                           exclude_afk_time=self.exclude_afk_time,
-                           afk_data=self.data['afk_data'], manual_data=self.data['manual_data'])
+        self.AWD.add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
+                                    duration=high - low, tag=self.tag.text().replace('Tag:', ''),
+                                    overlap=self.overlap,
+                                    exclude_afk_time=self.exclude_afk_time,
+                                    afk_data=self.data['afk_data'], manual_data=self.data['manual_data'])
         self.update_plot_data()
         self.update_datatable(1)
         self.update_legend()
@@ -216,7 +217,6 @@ class AwQtManual(QtWidgets.QMainWindow):
                 leg_lab.setStyleSheet(
                     f"background-color: {use_c}; "
                     f"border: 1px solid black; "
-                    f"styleColor: black; "
                     f"color: white; "
                     "Text.style: Outline"
                 )
@@ -239,7 +239,6 @@ class AwQtManual(QtWidgets.QMainWindow):
                 # setting up background color and border
                 leg_lab.setStyleSheet(f"background-color: {use_c}; "
                                       f"border: 1px solid black; "
-                                      f"styleColor: black; "
                                       f"color: white; "
                                       "Text.style: Outline"
                                       )
@@ -277,9 +276,10 @@ class AwQtManual(QtWidgets.QMainWindow):
     def delete_events(self):
         self.delete_legend()
         low, high = self.selection.getRegion()
-        add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
-                           duration=high - low, tag=self.tag.text().replace('Tag:', ''),
-                           overlap='delete', afk_data=self.data['afk_data'], manual_data=self.data['manual_data'])
+        self.AWD.add_manual_data_v2(start=datetime.datetime.fromtimestamp(low, datetime.timezone.utc),
+                                    duration=high - low, tag=self.tag.text().replace('Tag:', ''),
+                                    overlap='delete', afk_data=self.data['afk_data'],
+                                    manual_data=self.data['manual_data'])
         self.update_plot_data()
         self.update_datatable(1)
         self.update_legend()
@@ -297,9 +297,9 @@ class AwQtManual(QtWidgets.QMainWindow):
                        'duration_min']].groupby(self.sum_col[self.sum_by]).sum().loc[:, ['duration_min']]
             df.loc['total'] = df.sum()
             if dataset_name == 'manual_data':
-
                 exclude_time = df.loc[df.index.str.contains('#')].sum()
-                untagged_notafk = get_total_untagged_not_afk_data(self.data['afk_data'], self.data['manual_data']) / 60
+                untagged_notafk = self.AWD.get_total_untagged_not_afk_data(self.data['afk_data'],
+                                                                           self.data['manual_data']) / 60
                 df.loc['exclude tags'] = exclude_time
                 df.loc['untag(~afk)'] = untagged_notafk
                 df.loc['total - exclude tags'] = df.loc['total'] - exclude_time
@@ -321,7 +321,7 @@ class AwQtManual(QtWidgets.QMainWindow):
         if self.data_plot.sceneBoundingRect().contains(pos):
             mousePoint = self.vb.mapSceneToView(pos)
             index = mousePoint.x()
-            tag, tag_dur, afk, afk_dur, cur_app, window, ww_dur = get_labels_from_unix(
+            tag, tag_dur, afk, afk_dur, cur_app, window, ww_dur = self.AWD.get_labels_from_unix(
                 index,
                 self.data['afk_data'],
                 self.data['ww_data'],
@@ -348,7 +348,7 @@ class AwQtManual(QtWidgets.QMainWindow):
 
     def add_windowwatcher(self):
         start = datetime.datetime.fromisoformat(self.day)
-        data = get_window_watcher_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+        data = self.AWD.get_window_watcher_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
         legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'app'])
@@ -367,7 +367,7 @@ class AwQtManual(QtWidgets.QMainWindow):
 
     def add_afk(self):
         start = datetime.datetime.fromisoformat(self.day)
-        data = get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+        data = self.AWD.get_afk_data(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
         r = QtGui.QColor(255, 0, 0)
         g = QtGui.QColor(0, 225, 0)
         legend = {'not-afk': g, 'afk': r}
@@ -388,7 +388,7 @@ class AwQtManual(QtWidgets.QMainWindow):
 
     def add_manual_data(self):
         start = datetime.datetime.fromisoformat(self.day)
-        data = get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
+        data = self.AWD.get_manual(start.isoformat(), (start + datetime.timedelta(days=1)).isoformat())
         legend = {}
         if data is not None:
             apps = pd.unique(data.loc[:, 'tag'])

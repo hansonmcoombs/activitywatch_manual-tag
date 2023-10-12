@@ -2,7 +2,7 @@
 created matt_dumont 
 on: 7/10/23
 """
-
+import time
 import pystray
 import sys
 from pathlib import Path
@@ -11,7 +11,7 @@ from PIL import Image
 
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
-from notification.notify_on_amount import desktop_notification, notify_on_amount
+from notification.notify_on_amount import desktop_notification, Notifier
 from path_support import pause_path, notify_icon_path, tray_app_state_path, freq_path
 import subprocess
 
@@ -33,6 +33,7 @@ class AwqtTagNotify():
 
         :param test_mode: bool if True include test notification menu item # todo document
         """
+        self.notifier = Notifier()
         pause_path.unlink(missing_ok=True)  # reset any pauses on restart
         if tray_app_state_path.exists():
             with open(tray_app_state_path, 'r') as f:
@@ -42,7 +43,7 @@ class AwqtTagNotify():
         else:
             self.notifying = True
             self.note_frequency = 10
-
+        self.in_startup=True
         self.test_mode = test_mode
         self._pause_10 = False
         self._pause_30 = False
@@ -181,7 +182,9 @@ class AwqtTagNotify():
         self.icon.stop()
 
     def run(self):
-        self.icon.run()
+        self.icon.run(
+            self.notification
+        )
 
     def _launch_notify_params(self):
         subprocess.run([
@@ -211,26 +214,39 @@ class AwqtTagNotify():
                 self.note_frequency = int(f.readline().strip())
             freq_path.unlink()
 
-    def notification(self):
-        run_notification = True
-        # check for pause
-        if pause_path.exists():
-            with open(pause_path, 'r') as f:
-                pause_time = datetime.datetime.fromisoformat(f.readline())
-            if datetime.datetime.now() < pause_time:
-                run_notification = False
+    def notification(self, icon):
+        """
+        run the notification loop
+        :param icon: need to pass the icon to the function in pystray, so this must be here
+        :return:
+        """
+        icon.visible = True
+        while True:  # todo this is blocking quit.
+            if self.in_startup:
+                print('in startup')
+                self.in_startup=False
             else:
-                pause_path.unlink()
-                # unchecked all pause items
-                self._pause_notifications = False
-                self._pause_custom = False
-                self._pause_60 = False
-                self._pause_30 = False
-                self._pause_10 = False
+                run_notification = True
+                # check for pause
+                if pause_path.exists():
+                    with open(pause_path, 'r') as f:
+                        pause_time = datetime.datetime.fromisoformat(f.readline())
+                    if datetime.datetime.now() < pause_time:
+                        run_notification = False
+                    else:
+                        pause_path.unlink()
+                        # unchecked all pause items
+                        self._pause_notifications = False
+                        self._pause_custom = False
+                        self._pause_60 = False
+                        self._pause_30 = False
+                        self._pause_10 = False
 
-        # run notification
-        if run_notification:
-            notify_on_amount()
+                # run notification
+                if run_notification:
+                    self.notifier.notify_on_amount()
+                print(f'waiting {self.note_frequency} minutes')
+                time.sleep(self.note_frequency * 60)
 
 
 def _test_notification():

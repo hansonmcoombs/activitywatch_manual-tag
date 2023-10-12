@@ -27,20 +27,27 @@ default_values = dict(
     notifications_start=8,
     notifications_stop=18,
     start_hr=4,
-    key='textbelt'
+    key='textbelt',
+    text_num='',
+    message='',
 
 )
 
 
 def read_param_file(path):
     params = {}
-    with open(path, 'r') as f:
-        lines = f.readlines()
+    if path.exists():
+        with open(path, 'r') as f:
+            lines = f.readlines()
 
-    for l in lines:
-        k, v = l.split('=')
-        temp = v.strip()
-        if k in ['limit', 'limit_txt', 'notifications_start', 'notifications_stop', 'start_hr', 'countdown_start']:
-            temp = int(temp)
-        params[k.strip()] = temp
+        for l in lines:
+            k, v = l.split('=')
+            temp = v.strip()
+            if k in ['limit', 'limit_txt', 'notifications_start', 'notifications_stop', 'start_hr', 'countdown_start']:
+                temp = int(temp)
+            params[k.strip()] = temp
+    else:
+        params = default_values
+
+    assert set(params.keys()) == set(parameter_keys), f'missing parameters: {set(parameter_keys) - set(params.keys())}'
     return params
