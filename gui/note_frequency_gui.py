@@ -4,7 +4,7 @@ on: 7/10/23
 """
 import datetime
 import sys
-from path_support import pause_path
+from path_support import freq_path
 from PyQt6 import QtGui, QtWidgets
 
 class SetFrequency(QtWidgets.QMainWindow):
@@ -55,7 +55,7 @@ class SetFrequency(QtWidgets.QMainWindow):
             mbox.setStyleSheet(self.sheetstyle)
             mbox.exec()
             return
-        with open(pause_path, 'w') as f:
+        with open(freq_path, 'w') as f:
             f.write(str(tval))
         self.close()
 

@@ -1,3 +1,8 @@
 conda create --name aw_qt --channel conda-forge pyqtgraph matplotlib pandas plyer # todo trial with more modern env
 pip install aw-client
 pip install PyQt6
+
+pip install pystray
+pip install manimlib
+pip install pycairo
+pip install PyGObject

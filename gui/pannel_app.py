@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 import datetime
 from PIL import Image
-
+from threading import Event
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
 from notification.notify_on_amount import desktop_notification, Notifier
@@ -43,7 +43,7 @@ class AwqtTagNotify():
         else:
             self.notifying = True
             self.note_frequency = 10
-        self.in_startup=True
+        self.event = Event()
         self.test_mode = test_mode
         self._pause_10 = False
         self._pause_30 = False
@@ -53,9 +53,6 @@ class AwqtTagNotify():
         self._make_menu()
         self.icon = pystray.Icon(name='AwqtTagNotify', icon=self._make_icon(),
                                  menu=self.menu)
-
-    # todo make this actually run the notifications....
-    # todo see: https://www.reddit.com/r/learnpython/comments/a7utd7/pystray_python_system_tray_icon_app/
     def _make_menu(self):
         self.menu_items = {}
 
@@ -74,7 +71,7 @@ class AwqtTagNotify():
         self.menu_items['set_notify_params'] = t
 
         # set note frequency
-        t = pystray.MenuItem('Set Note Frequency', self._launch_set_note_frequency, checked=None)
+        t = pystray.MenuItem('Set Notification Frequency', self._launch_set_note_frequency, checked=None)
         self.menu_items['set_note_freq'] = t
 
         # test notification option
@@ -179,6 +176,7 @@ class AwqtTagNotify():
         with open(tray_app_state_path, 'w') as f:
             f.write(str(self.notifying) + '\n')
             f.write(str(self.note_frequency) + '\n')
+        self.event.set()
         self.icon.stop()
 
     def run(self):
@@ -221,36 +219,32 @@ class AwqtTagNotify():
         :return:
         """
         icon.visible = True
-        while True:  # todo this is blocking quit.
-            if self.in_startup:
-                print('in startup')
-                self.in_startup=False
-            else:
-                run_notification = True
-                # check for pause
-                if pause_path.exists():
-                    with open(pause_path, 'r') as f:
-                        pause_time = datetime.datetime.fromisoformat(f.readline())
-                    if datetime.datetime.now() < pause_time:
-                        run_notification = False
-                    else:
-                        pause_path.unlink()
-                        # unchecked all pause items
-                        self._pause_notifications = False
-                        self._pause_custom = False
-                        self._pause_60 = False
-                        self._pause_30 = False
-                        self._pause_10 = False
-
-                # run notification
-                if run_notification:
-                    self.notifier.notify_on_amount()
-                print(f'waiting {self.note_frequency} minutes')
-                time.sleep(self.note_frequency * 60)
+        while not self.event.is_set():
+            run_notification = self.notifying
+            # check for pause
+            if pause_path.exists():
+                with open(pause_path, 'r') as f:
+                    pause_time = datetime.datetime.fromisoformat(f.readline())
+                if datetime.datetime.now() < pause_time:
+                    run_notification = False
+                    print('notifications paused until', pause_time)
+                else:
+                    print('pause time expired')
+                    self.cancel_pause()
+                    # unchecked all pause items
+            # run notification
+            if run_notification:
+                self.notifier.notify_on_amount()
+            print(f'waiting {self.note_frequency} minutes')
+            self.event.wait(self.note_frequency * 60)
 
 
 def _test_notification():
     desktop_notification('test title', 'test message')
+
+def launch_pannel_app(test_mode):
+    t = AwqtTagNotify(True)
+    t.run()
 
 
 if __name__ == '__main__':

@@ -5,7 +5,7 @@ on: 7/10/23
 import sys
 from path_support import aq_notify_param_path
 from PyQt6 import QtGui, QtWidgets
-from notification.parameter_file_utils import parameter_keys, default_values, questions
+from notification.parameter_file_utils import parameter_keys, default_values, questions, read_param_file
 
 class NotifyParams(QtWidgets.QMainWindow):
     def __init__(self):
@@ -19,12 +19,14 @@ class NotifyParams(QtWidgets.QMainWindow):
         self.font = QtGui.QFont()
         self.sheetstyle =  f"color: black; "
         self.answers={}
+        existing_params = read_param_file(aq_notify_param_path)  # also provides default values
 
         for l in parameter_keys:
             label = QtWidgets.QLabel(questions[l])
             label.setFont(self.font)
             label.setStyleSheet(self.sheetstyle)
-            self.answers[l] = t = QtWidgets.QLineEdit(str(default_values.get(l,'')))
+            value = str(existing_params.get(l,''))
+            self.answers[l] = t = QtWidgets.QLineEdit(value)
             vert.addWidget(label)
             vert.addWidget(t)
         # save/cancel buttons
@@ -59,6 +61,8 @@ class NotifyParams(QtWidgets.QMainWindow):
                         problems.append(f'{l}={txt}, input must be an integer')
                     except AssertionError:
                         problems.append(f'{l}={txt}, input must be between 0 and 24')
+            else:
+                outlines.append(f'{l}={self.answers[l].text()}\n')
 
         if len(problems):
             mbox = QtWidgets.QMessageBox()
