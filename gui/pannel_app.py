@@ -243,7 +243,7 @@ def _test_notification():
     desktop_notification('test title', 'test message')
 
 def launch_pannel_app(test_mode):
-    t = AwqtTagNotify(True)
+    t = AwqtTagNotify(test_mode)
     t.run()
 
 
