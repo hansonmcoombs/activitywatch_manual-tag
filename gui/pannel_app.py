@@ -12,7 +12,7 @@ from threading import Event
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
 from notification.notify_on_amount import desktop_notification, Notifier
-from path_support import pause_path, notify_icon_path, tray_app_state_path, freq_path
+from path_support import pause_path, icon_path, tray_app_state_path, freq_path
 import subprocess
 
 
@@ -31,7 +31,7 @@ class AwqtTagNotify():
     def __init__(self, test_mode=True):
         """
 
-        :param test_mode: bool if True include test notification menu item # todo document
+        :param test_mode: bool if True include test notification menu item
         """
         self.notifier = Notifier()
         pause_path.unlink(missing_ok=True)  # reset any pauses on restart
@@ -170,7 +170,7 @@ class AwqtTagNotify():
         self._pause_notifications = True
 
     def _make_icon(self):
-        return Image.open(notify_icon_path)
+        return Image.open(icon_path)
 
     def quit(self):
         with open(tray_app_state_path, 'w') as f:

@@ -1,16 +1,16 @@
+.. image:: figures/kea_icon.png
+    :width: 50
+    :align: left
+    :alt: Activity Watch Manual Tag and Notification
+
 Activity Watch Manual Tag and Notification
 #############################################
 
-.. image:: # todo path to image
-    :width: 100
-    :align: center
-    :alt: Activity Watch Manual Tag and Notification
 
-Index
-======
 
-.. toctree::
-    :maxdepth: 3
+
+.. contents:: Table of Contents
+    :depth: 3
 
 Feature Overview
 ======================
