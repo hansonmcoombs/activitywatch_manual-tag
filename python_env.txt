@@ -2,7 +2,7 @@ conda create --name aw_qt --channel conda-forge pyqtgraph matplotlib pandas plye
 pip install aw-client
 pip install PyQt6
 
-pip install pystray
+# todo will I need these on a new ENV?
 pip install manimlib
 pip install pycairo
 pip install PyGObject

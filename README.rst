@@ -8,7 +8,6 @@ Activity Watch Manual Tag and Notification
 
 
 
-
 .. contents:: Table of Contents
     :depth: 3
 
@@ -53,6 +52,8 @@ Other Linux dependencies
 
     sudo apt install libxcb-cursor0B # for pyqtgraph
     sudo apt install mpg123  # used to play sound
+
+    # todo do I need these now that I'm not using pystray
     sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-4.0 # for pygobject / pystray
 
 Install Activity Watch Manual Tag and Notification

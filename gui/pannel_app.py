@@ -2,17 +2,18 @@
 created matt_dumont 
 on: 7/10/23
 """
-import time
-import pystray
+from PyQt6 import QtWidgets, QtCore, QtGui
 import sys
 from pathlib import Path
 import datetime
-from PIL import Image
-from threading import Event
+
 sys.path.append(Path(__file__).parents[1])
 print(sys.path)
 from notification.notify_on_amount import desktop_notification, Notifier
-from path_support import pause_path, icon_path, tray_app_state_path, freq_path
+from path_support import icon_path, tray_app_state_path, pause_icon_path
+from gui.note_frequency_gui import SetFrequency
+from gui.custom_pause_gui import CustomPause
+from gui.set_notify_overwork_params_gui import NotifyParams
 import subprocess
 
 
@@ -28,13 +29,12 @@ class AwqtTagNotify():
     )
     menu = None
 
-    def __init__(self, test_mode=True):
+    def __init__(self, app, test_mode=True):
         """
 
         :param test_mode: bool if True include test notification menu item
         """
         self.notifier = Notifier()
-        pause_path.unlink(missing_ok=True)  # reset any pauses on restart
         if tray_app_state_path.exists():
             with open(tray_app_state_path, 'r') as f:
                 self.notifying = f.readline().strip() == 'True'
@@ -43,76 +43,112 @@ class AwqtTagNotify():
         else:
             self.notifying = True
             self.note_frequency = 10
-        self.event = Event()
+        self.app = app
+        self.pause_until = None  # reset any pauses on update
+
         self.test_mode = test_mode
         self._pause_10 = False
         self._pause_30 = False
         self._pause_60 = False
         self._pause_custom = False
         self._pause_notifications = False
+
+        self.tray = QtWidgets.QSystemTrayIcon()
+        self.base_icon = QtGui.QIcon(str(icon_path))
+        self.pause_icon = QtGui.QIcon(str(pause_icon_path))
+        self.tray.setIcon(self.base_icon)
+        self.tray.setVisible(True)
         self._make_menu()
-        self.icon = pystray.Icon(name='AwqtTagNotify', icon=self._make_icon(),
-                                 menu=self.menu)
+        self.tray.setContextMenu(self.menu)
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.notification)
+        self.timer.setInterval(1000 * 60 * self.note_frequency)  # convert to ms
+        self.timer.start()
+
     def _make_menu(self):
         self.menu_items = {}
+        menu_text = {
+            'launch_timetag': 'Launch TimeTag',
+            'notifying': 'Notifying Overwork',
+            'pause_notifications': 'Pause Notifications',
+            'set_notify_params': 'Set Notify Params',
+            'set_note_freq': 'Set Notification Frequency',
+            'test_notification': 'Test Notification',
+            'quit': 'Quit',
+        }
 
-        # launch aw_qt_tag
-        t = pystray.MenuItem('Launch TimeTag', self._launch_timetag, checked=None)
-        self.menu_items['launch_timetag'] = t
+        menu_actions = {
+            'launch_timetag': self._launch_timetag,
+            'notifying': self.set_notifying,
+            'pause_notifications': None,
+            'set_notify_params': self._launch_notify_params,
+            'set_note_freq': self.set_note_frequency,
+            'test_notification': _test_notification,
+            'quit': self.quit,
 
-        # notifying
-        t = pystray.MenuItem('Notifying Overwork', self.set_notifying, checked=self.is_checked)
-        self.menu_items['notifying'] = t
+        }
 
-        self._make_pause_menu()
+        self.menu = QtWidgets.QMenu()
+        for k in self.menu_keys:
+            kwargs = {}
+            if k == 'test_notification' and not self.test_mode:
+                continue
 
-        # set notify params
-        t = pystray.MenuItem('Set Notify Params', self._launch_notify_params, checked=None)
-        self.menu_items['set_notify_params'] = t
+            if k == 'pause_notifications':
+                self._make_pause_menu()
+                continue
+            if k == 'notifying':
+                kwargs = dict(checkable=True, checked=self.is_checked(k))
 
-        # set note frequency
-        t = pystray.MenuItem('Set Notification Frequency', self._launch_set_note_frequency, checked=None)
-        self.menu_items['set_note_freq'] = t
-
-        # test notification option
-        t = pystray.MenuItem('Test Notification', _test_notification, checked=None, visible=self.test_mode)
-        self.menu_items['test_notification'] = t
-
-        # quit
-        t = pystray.MenuItem('Quit', self.quit, checked=None)
-        self.menu_items['quit'] = t
-
-        self.menu = pystray.Menu(*[self.menu_items[k] for k in self.menu_keys])
+            t = QtGui.QAction(menu_text[k], **kwargs)
+            t.triggered.connect(menu_actions[k])
+            self.menu_items[k] = t
+            self.menu.addAction(t)
 
     def _make_pause_menu(self):
         # pause notifications
-        pause_items = []
-        t = pystray.MenuItem('Pause 10 min', self.set_pause_10, checked=self.is_checked)
-        pause_items.append(t)
-        self.menu_items['pause_10'] = t
+        self.pause_menu = QtWidgets.QMenu('Pause Notifications')
+        self.menu_items['pause_notifications'] = self.pause_menu
+        menu_text = {
+            'pause_10': 'Pause 10 min',
+            'pause_30': 'Pause 30 min',
+            'pause_60': 'Pause 60 min',
+            'pause_custom': 'Pause For...',
+            'cancel_pause': 'Cancel Pause',
+        }
 
-        t = pystray.MenuItem('Pause 30 min', self.set_pause_30, checked=self.is_checked)
-        pause_items.append(t)
-        self.menu_items['pause_30'] = t
+        menu_actions = {
+            'pause_10': self.set_pause_10,
+            'pause_30': self.set_pause_30,
+            'pause_60': self.set_pause_60,
+            'pause_custom': self.set_custom_pause,
+            'cancel_pause': self.cancel_pause,
+        }
 
-        t = pystray.MenuItem('Pause 60 min', self.set_pause_60, checked=self.is_checked)
-        pause_items.append(t)
-        self.menu_items['pause_60'] = t
+        for k in menu_text.keys():
+            if k == 'cancel_pause':
+                t = QtGui.QAction(menu_text[k])
+            else:
+                t = QtGui.QAction(menu_text[k], checkable=True, checked=self.is_checked(k))
+            t.triggered.connect(menu_actions[k])
+            self.menu_items[k] = t
+            self.pause_menu.addAction(t)
+        self.menu.addMenu(self.pause_menu)
 
-        t = pystray.MenuItem('Pause For...', self.set_custom_pause, checked=self.is_checked)
-        pause_items.append(t)
-        self.menu_items['pause_custom'] = t
+    def _update_checked(self):
+        for k in ['pause_10', 'pause_30', 'pause_60', 'pause_custom', 'notifying']:
+            self.menu_items[k].setChecked(self.is_checked(k))
 
-        t = pystray.MenuItem('Cancel Pause', self.cancel_pause, checked=None)
-        pause_items.append(t)
-        self.menu_items['cancel_pause'] = t
-
-        pause_menu = pystray.Menu(*pause_items)
-        t = pystray.MenuItem('Pause Notifications', pause_menu, checked=self.is_checked)
-        self.menu_items['pause_notifications'] = t
+        k = 'pause_notifications'
+        if self.is_checked(k):
+            self.tray.setIcon(self.pause_icon)
+        else:
+            self.tray.setIcon(self.base_icon)
 
     def set_notifying(self):
         self.notifying = not self.notifying
+        self._update_checked()
 
     def set_pause_10(self):
         self._pause_10 = True
@@ -127,35 +163,24 @@ class AwqtTagNotify():
         self._set_pause_discrete(60)
 
     def set_custom_pause(self):
-        if pause_path.exists():
-            pause_path.unlink()
-        self._launch_custom_pause()
-        if pause_path.exists():
-            self._pause_custom = True
-            self._pause_notifications = True
-        else:
-            self.cancel_pause()
+        self.sub_window = CustomPause()
+        self.sub_window.submitClicked.connect(self._set_pause_discrete)
+        self.sub_window.show()
+        self._update_checked()
 
-    def is_checked(self, item):
-        assert isinstance(item, pystray.MenuItem) or isinstance(item, pystray.Menu)
-        txt = item.text
-        if txt == 'Pause 10 min':
-            return self._pause_10
-        elif txt == 'Pause 30 min':
-            return self._pause_30
-        elif txt == 'Pause 60 min':
-            return self._pause_60
-        elif txt == 'Pause For...':
-            return self._pause_custom
-        elif txt == 'Pause Notifications':
-            return self._pause_notifications
-        elif txt == 'Notifying Overwork':
-            return self.notifying
-        else:
-            raise ValueError(f'{txt=} not recognized')
+    def is_checked(self, k):
+        mappers = {
+            'pause_10': self._pause_10,
+            'pause_30': self._pause_30,
+            'pause_60': self._pause_60,
+            'pause_custom': self._pause_custom,
+            'notifying': self.notifying,
+            'pause_notifications': self._pause_notifications,
+        }
+        return mappers[k]
 
     def cancel_pause(self):
-        pause_path.unlink(missing_ok=True)
+        self.pause_until = None
 
         # unchecked all pause items
         self._pause_notifications = False
@@ -163,32 +188,47 @@ class AwqtTagNotify():
         self._pause_60 = False
         self._pause_30 = False
         self._pause_10 = False
+        self._update_checked()
+
+    def _set_notify_frequency(self, nmins):
+        if nmins == 'None':
+            pass
+        else:
+            nmins = int(nmins)
+            self.note_frequency = nmins
+            self.timer.stop()
+            self.timer.setInterval(1000 * 60 * self.note_frequency)  # convert to ms
+            self.timer.start()
 
     def _set_pause_discrete(self, nmins):
-        with open(pause_path, 'w') as f:
-            f.write((datetime.datetime.now() + datetime.timedelta(minutes=nmins)).isoformat())
-        self._pause_notifications = True
-
-    def _make_icon(self):
-        return Image.open(icon_path)
+        print(nmins)
+        if nmins == 'None' or nmins == '':
+            self.pause_until = None
+        else:
+            if isinstance(nmins, str):
+                self._pause_custom = True
+            nmins = int(nmins)
+            self.pause_until = datetime.datetime.now() + datetime.timedelta(minutes=nmins)
+            self._pause_notifications = True
+        self._update_checked()
 
     def quit(self):
         with open(tray_app_state_path, 'w') as f:
             f.write(str(self.notifying) + '\n')
             f.write(str(self.note_frequency) + '\n')
-        self.event.set()
-        self.icon.stop()
+        self.timer.stop()
+        self.app.quit()
 
-    def run(self):
-        self.icon.run(
-            self.notification
-        )
+
 
     def _launch_notify_params(self):
-        subprocess.run([
-            sys.executable,
-            str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_set_notify_params.py'))
-        ])
+
+        def temp():
+            pass
+
+        self.sub_window = NotifyParams(self.app)
+        self.sub_window.submitClicked.connect(temp)
+        self.sub_window.show()
 
     def _launch_timetag(self):
         subprocess.run([
@@ -196,57 +236,43 @@ class AwqtTagNotify():
             str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_aw-tag.py'))
         ])
 
-    def _launch_custom_pause(self):
-        subprocess.run([
-            sys.executable,
-            str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_custom_pause.py'))
-        ])
+    def set_note_frequency(self):
+        self.sub_window = SetFrequency()
+        self.sub_window.submitClicked.connect(self._set_notify_frequency)
+        self.sub_window.show()
 
-    def _launch_set_note_frequency(self):
-        subprocess.run([
-            sys.executable,
-            str(Path(__file__).parents[1].joinpath('aw_notify_callable_proceses/launch_set_note_freq.py'))
-        ])
-        if freq_path.exists():
-            with open(freq_path, 'r') as f:
-                self.note_frequency = int(f.readline().strip())
-            freq_path.unlink()
-
-    def notification(self, icon):
+    def notification(self):
         """
         run the notification loop
         :param icon: need to pass the icon to the function in pystray, so this must be here
         :return:
         """
-        icon.visible = True
-        while not self.event.is_set():
-            run_notification = self.notifying
-            # check for pause
-            if pause_path.exists():
-                with open(pause_path, 'r') as f:
-                    pause_time = datetime.datetime.fromisoformat(f.readline())
-                if datetime.datetime.now() < pause_time:
-                    run_notification = False
-                    print('notifications paused until', pause_time)
-                else:
-                    print('pause time expired')
-                    self.cancel_pause()
-                    # unchecked all pause items
-            # run notification
-            if run_notification:
-                self.notifier.notify_on_amount()
-            print(f'waiting {self.note_frequency} minutes')
-            self.event.wait(self.note_frequency * 60)
+        run_notification = self.notifying
+        # check for pause
+        if self.pause_until is not None:
+            if datetime.datetime.now() < self.pause_until:
+                run_notification = False
+                print('notifications paused until', self.pause_until.isoformat())
+            else:
+                print('pause time expired')
+                self.cancel_pause()  # unchecked all pause items
+        # run notification
+        if run_notification:
+            self.notifier.notify_on_amount()
+        print(f'waiting {self.note_frequency} minutes')
 
 
 def _test_notification():
     desktop_notification('test title', 'test message')
 
+
 def launch_pannel_app(test_mode):
-    t = AwqtTagNotify(test_mode)
-    t.run()
+    app = QtWidgets.QApplication([])
+    app.setQuitOnLastWindowClosed(False)
+    AWTN = AwqtTagNotify(app, test_mode)
+    sys.exit(app.exec())
+
 
 
 if __name__ == '__main__':
-    t = AwqtTagNotify(True)
-    t.run()
+    launch_pannel_app(True)

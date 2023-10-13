@@ -4,14 +4,14 @@ on: 7/10/23
 """
 import datetime
 import sys
-from path_support import pause_path
-from PyQt6 import QtGui, QtWidgets
+from PyQt6 import QtGui, QtWidgets, QtCore
 
 
-class CustomPause(QtWidgets.QMainWindow):
-    saved = False
+class CustomPause(QtWidgets.QWidget):
+    submitClicked = QtCore.pyqtSignal(str)
+
     def __init__(self):
-        QtWidgets.QMainWindow.__init__(self)
+        super().__init__()
         self.resize(100, 100)
 
         # frame box
@@ -31,45 +31,31 @@ class CustomPause(QtWidgets.QMainWindow):
         save = QtWidgets.QPushButton('Save')
         save.clicked.connect(self.save)
         cancel = QtWidgets.QPushButton('Cancel')
-        cancel.clicked.connect(self.close)
+        cancel.clicked.connect(self.cancel)
         horiz = QtWidgets.QHBoxLayout()
         horiz.addWidget(save)
         horiz.addWidget(cancel)
         vert.addLayout(horiz)
-        w = QtWidgets.QWidget()
-        w.setLayout(vert)
-        self.setCentralWidget(w)
+        self.setLayout(vert)
+        self.show()
 
     def save(self):
         txt = self.answers.text()
-        problem = False
         try:
             tval = int(txt)
             if tval <= 0:
                 raise ValueError()
 
         except ValueError:
-            problem = True
             mbox = QtWidgets.QMessageBox()
             mbox.setText("Pause duration needs to be a positive integer")
             mbox.setFont(self.font)
             mbox.setStyleSheet(self.sheetstyle)
             mbox.exec()
             return
-
-        with open(pause_path, 'w') as f:
-            f.write((datetime.datetime.now() + datetime.timedelta(minutes=tval)).isoformat())
-        self.saved = True
+        self.submitClicked.emit(txt)
         self.close()
 
-
-def launch_custom_pause():
-    app = QtWidgets.QApplication(sys.argv)
-    win = CustomPause()
-    win.show()
-    sys.exit(app.exec())
-    save=win.saved
-    print(f'{save=}')
-
-if __name__ == '__main__':
-    launch_custom_pause()
+    def cancel(self):
+        self.submitClicked.emit('None')
+        self.close()

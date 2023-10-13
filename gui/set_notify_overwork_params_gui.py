@@ -3,29 +3,33 @@ created matt_dumont
 on: 7/10/23
 """
 import sys
+from PyQt6 import QtGui, QtWidgets, QtCore
+from pathlib import Path
+sys.path.append(Path(__file__).parents[1])
 from path_support import aq_notify_param_path
-from PyQt6 import QtGui, QtWidgets
-from notification.parameter_file_utils import parameter_keys, default_values, questions, read_param_file
+from notification.parameter_file_utils import parameter_keys, questions, read_param_file
 
-class NotifyParams(QtWidgets.QMainWindow):
-    def __init__(self):
-        QtWidgets.QMainWindow.__init__(self)
-        self.resize(500, 500)
 
+class NotifyParams(QtWidgets.QWidget):
+    submitClicked = QtCore.pyqtSignal(str)
+
+    def __init__(self, app):
+        super().__init__()
+        self.setWindowTitle('Set Notification Parameters')
         # frame box
         vert = QtWidgets.QVBoxLayout()
 
         # set font stats
         self.font = QtGui.QFont()
-        self.sheetstyle =  f"color: black; "
-        self.answers={}
+        self.sheetstyle = f"color: black; "
+        self.answers = {}
         existing_params = read_param_file(aq_notify_param_path)  # also provides default values
 
         for l in parameter_keys:
             label = QtWidgets.QLabel(questions[l])
             label.setFont(self.font)
             label.setStyleSheet(self.sheetstyle)
-            value = str(existing_params.get(l,''))
+            value = str(existing_params.get(l, ''))
             self.answers[l] = t = QtWidgets.QLineEdit(value)
             vert.addWidget(label)
             vert.addWidget(t)
@@ -38,9 +42,9 @@ class NotifyParams(QtWidgets.QMainWindow):
         horiz.addWidget(save)
         horiz.addWidget(cancel)
         vert.addLayout(horiz)
-        w = QtWidgets.QWidget()
-        w.setLayout(vert)
-        self.setCentralWidget(w)
+        self.move(app.primaryScreen().geometry().center()- self.rect().center())
+        self.setLayout(vert)
+        self.show()
 
     def save(self):
         outlines = []
@@ -73,14 +77,9 @@ class NotifyParams(QtWidgets.QMainWindow):
         else:
             with open(aq_notify_param_path, 'w') as f:
                 f.writelines(outlines)
-            self.close()
+                self.submitClicked.emit(txt)
+                self.close()
 
-
-def launch_notify_params():
-    app = QtWidgets.QApplication(sys.argv)
-    win = NotifyParams()
-    win.show()
-    sys.exit(app.exec())
-
-if __name__ == '__main__':
-    launch_notify_params()
+    def cancel(self):
+        self.submitClicked.emit('None')
+        self.close()
