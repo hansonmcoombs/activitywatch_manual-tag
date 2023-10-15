@@ -41,10 +41,10 @@ Activity Watch
 
 .. code-block:: bash
 
-    mkdir ~/activitywatch
-    unzip: unzip {file.zip} -d ~/activitywatch
+    mkdir ~/ActivityWatchNoteTag
+    unzip: unzip {file.zip} -d ~/ActivityWatchNoteTag
 
-2. add ~/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
+2. add ~ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
 
 Other Linux dependencies
 
@@ -52,8 +52,10 @@ Other Linux dependencies
 
     sudo apt install libxcb-cursor0B # for pyqtgraph
     sudo apt install mpg123  # used to play sound
+    sudo apt install build-essential libdbus-glib-1-dev libgirepository1.0-dev  # for dbus
 
-    # todo do I need these now that I'm not using pystray
+
+# todo do I need these now that I'm not using pystray, still working through..., I ont' think i need these, but need to check on fresh install.
     sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-4.0 # for pygobject / pystray
 
 Install Activity Watch Manual Tag and Notification
@@ -63,7 +65,7 @@ To install the Activity Watch Manual Tag and Notification app:
 
 .. code-block:: bash
 
-    git clone git@github.com:hansonmcoombs/activitywatch_manual-tag.git ~/activitywatch_manual-tag
+    git clone https://github.com/hansonmcoombs/activitywatch_manual-tag.git ~/ActivityWatchNoteTag/activitywatch_manual-tag
 
 Note there is no need to add this path to your python path, as the launcher script will do this for you.
 
@@ -74,7 +76,7 @@ If you use conda to manage packages you can build the interpreter using the incl
 
 .. code-block:: bash
 
-    conda env create --file ~/activitywatch_manual-tag/env.yml
+    conda env create --file ~/ActivityWatchNoteTag/activitywatch_manual-tag/python_env.yml
 
 alternatively you can build the interpreter manually a loose list of dependencies is:
 available in python_env.txt
@@ -82,8 +84,8 @@ available in python_env.txt
 Autostart setup
 -----------------
 
-1. add ~/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
-2. add [python bin] ~/activitywatch_manual-tag/launch_pannel_app.py to autostart
+1. add ~/ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
+2. add [python bin] ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py to autostart
 
 
 Usage

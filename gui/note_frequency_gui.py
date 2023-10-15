@@ -10,10 +10,10 @@ from PyQt6 import QtGui, QtWidgets, QtCore
 class SetFrequency(QtWidgets.QWidget):
     submitClicked = QtCore.pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, current_note):
         super().__init__()
         self.resize(100, 100)
-
+        self.current_note = current_note
         # frame box
         vert = QtWidgets.QVBoxLayout()
 
@@ -21,7 +21,8 @@ class SetFrequency(QtWidgets.QWidget):
         self.font = QtGui.QFont()
         self.sheetstyle = f"color: black; "
 
-        label = QtWidgets.QLabel('How frequently would you like to be notified (minutes)?')
+        label = QtWidgets.QLabel('How frequently would you like to be notified (minutes)?'
+                                 f'\n currently set to {self.current_note} minutes')
         label.setFont(self.font)
         label.setStyleSheet(self.sheetstyle)
         vert.addWidget(label)

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 import datetime
 
-sys.path.append(Path(__file__).parents[1])
+sys.path.append(str(Path(__file__).parents[1]))
 print(sys.path)
 from notification.notify_on_amount import desktop_notification, Notifier
 from path_support import icon_path, tray_app_state_path, pause_icon_path
@@ -237,7 +237,7 @@ class AwqtTagNotify():
         ])
 
     def set_note_frequency(self):
-        self.sub_window = SetFrequency()
+        self.sub_window = SetFrequency(self.note_frequency)
         self.sub_window.submitClicked.connect(self._set_notify_frequency)
         self.sub_window.show()
 
