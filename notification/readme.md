@@ -12,3 +12,16 @@ sudo cp /home/matt_dumont/activitywatch_manual-tag/notification/notify_overwork.
 
 # todo setup signal bot
 
+
+
+# todo additoinal stuff needed for pystray menus not working...
+
+sudo apt install mpg123
+sudo apt install libcairo2-dev pkg-config python3-dev
+
+
+sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-4.0
+pip install pystray
+pip install manimlib
+pip install pycairo
+pip install PyGObject
