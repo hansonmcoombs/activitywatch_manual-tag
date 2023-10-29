@@ -4,7 +4,6 @@ on: 20/05/23
 """
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from notification.notify_on_amount import desktop_notification
 
 if __name__ == '__main__':

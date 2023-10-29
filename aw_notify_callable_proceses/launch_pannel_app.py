@@ -5,7 +5,7 @@ on: 13/10/23
 import sys
 from pathlib import Path
 
-sys.path.append(Path(__file__).parents[1])
+sys.path.append(str(Path(__file__).parents[1]))
 from gui.pannel_app import launch_pannel_app
 
 if __name__ == '__main__':
