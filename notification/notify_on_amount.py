@@ -4,10 +4,6 @@ on: 18/02/22
 """
 
 import datetime
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).parents[1]))
 from notification.parameter_file_utils import read_param_file
 from path_support import aq_notify_param_path, notified_file, sound_path, notify_icon_path
 import pandas as pd

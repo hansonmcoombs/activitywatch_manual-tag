@@ -2,10 +2,7 @@
 created matt_dumont 
 on: 7/10/23
 """
-import sys
 from PyQt6 import QtGui, QtWidgets, QtCore
-from pathlib import Path
-sys.path.append(Path(__file__).parents[1])
 from path_support import aq_notify_param_path
 from notification.parameter_file_utils import parameter_keys, questions, read_param_file
 
