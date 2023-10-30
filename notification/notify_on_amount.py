@@ -30,6 +30,8 @@ class Notifier:
         if afk is not None:
             starts.append(afk.start.min())
             stops.append(afk.stop.max())
+        if len(starts) == 0:
+            return 0
         start_series = min(starts)
         stop_series = max(stops)
         data = pd.DataFrame(data=pd.date_range(start_series, stop_series, freq=f'{fraction}S'), columns=['timestep'])
