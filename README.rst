@@ -46,6 +46,10 @@ Activity Watch
 
 2. add ~ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
 
+.. code-block::
+    1. super key --> session startup
+    2. new --> name: ActivityWatch, command: ~/ActivityWatchNoteTag/activitywatch/aw-qt
+
 Other Linux dependencies
 
 .. code-block:: bash
@@ -86,6 +90,11 @@ Autostart setup
 
 1. add ~/ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
 2. add [python bin] ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py to autostart
+
+.. code-block::
+    1. super key --> session startup
+    2. new --> name: ActivityWatch, command: ~/ActivityWatchNoteTag/activitywatch/aw-qt
+    3. new --> name: ActivityWatchNoteTag, command: conda run -n aw_qt_tag python ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py
 
 
 Usage
