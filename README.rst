@@ -89,7 +89,8 @@ Autostart setup
 -----------------
 
 1. add ~/ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
-2. add [python bin] ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py to autostart
+2. add [python bin] ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py to autostart  # note that you may need to pass absolute paths if the .bashrc has not been sourced yet.
+
 
 .. code-block::
     1. super key --> session startup
