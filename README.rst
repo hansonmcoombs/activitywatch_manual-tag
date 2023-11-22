@@ -58,10 +58,6 @@ Other Linux dependencies
     sudo apt install mpg123  # used to play sound
     sudo apt install build-essential libdbus-glib-1-dev libgirepository1.0-dev  # for dbus
 
-
-# todo do I need these now that I'm not using pystray, still working through..., I ont' think i need these, but need to check on fresh install.
-    sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-4.0 # for pygobject / pystray
-
 Install Activity Watch Manual Tag and Notification
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
