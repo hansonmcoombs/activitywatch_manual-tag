@@ -54,7 +54,7 @@ Other Linux dependencies
 
 .. code-block:: bash
 
-    sudo apt install libxcb-cursor0B # for pyqtgraph
+    sudo apt install libxcb-cursor0 # for pyqtgraph
     sudo apt install mpg123  # used to play sound
     sudo apt install build-essential libdbus-glib-1-dev libgirepository1.0-dev  # for dbus
 
