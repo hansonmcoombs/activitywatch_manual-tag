@@ -42,7 +42,8 @@ Activity Watch
 .. code-block:: bash
 
     mkdir ~/ActivityWatchNoteTag
-    unzip: unzip {file.zip} -d ~/ActivityWatchNoteTag
+    # unzip:
+    unzip {file.zip} -d ~/ActivityWatchNoteTag
 
 2. add ~ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
 
