@@ -85,8 +85,25 @@ available in python_env.txt
 Autostart setup
 -----------------
 
-1. add ~/ActivityWatchNoteTag/activitywatch/aw-qt to autostart for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
-2. add [python bin] ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py to autostart  # note that you may need to pass absolute paths if the .bashrc has not been sourced yet.
+1. add the following to autostart... for more info see: https://docs.activitywatch.net/en/latest/getting-started.html#installation
+
+.. code-block::
+
+    ~/ActivityWatchNoteTag/activitywatch/aw-qt
+
+
+2. add [python bin] to autostart  # note that you may need to pass absolute paths if the .bashrc has not been sourced yet.
+
+.. code-block::
+
+    [python binary path] ~/ActivityWatchNoteTag/activitywatch_manual-tag/aw_notify_callable_proceses/launch_pannel_app.py
+
+to access python binary (assuming you are using conda):
+
+.. code-block::
+
+    conda activate aw_qt_tag
+    which python
 
 
 .. code-block::
